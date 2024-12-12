@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="124" viewBox="0 0 124 124" fill="none">
+  <!-- 背景圆角矩形 -->
+  <rect width="124" height="124" rx="24" fill="#1A1A1A"/>
+  
+  <!-- 主要重叠方块 -->
+  <!-- 后面的方块 -->
+  <rect 
+    x="42" 
+    y="42" 
+    width="30" 
+    height="30" 
+    fill="#FFFFFF"
+  />
+  
+  <!-- 前面的方块 -->
+  <rect 
+    x="52" 
+    y="52" 
+    width="30" 
+    height="30" 
+    fill="#808080"
+  />
+</svg> 
