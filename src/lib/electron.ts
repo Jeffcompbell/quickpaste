@@ -12,11 +12,13 @@ export function getElectronAPI() {
       window: {
         minimize: () => {},
         maximize: () => {},
+        restore: () => {},
         close: () => {},
         hide: () => {},
         show: () => {},
         togglePin: () => {},
         getPinState: () => Promise.resolve(false),
+        getMaximizedState: () => Promise.resolve(false),
       },
       clipboard: {
         writeText: (text: string) => {

@@ -1,42 +1,39 @@
 import { cn } from '@/lib/utils'
-
-const directories = [
-  {
-    id: 'default',
-    name: '默认',
-  },
-  {
-    id: 'custom',
-    name: '自定义',
-  },
-] as const
+import type { Directory } from '@/types'
+import { cursorDirectories, productDirectories } from '@/config/directories'
 
 interface DirectoryNavProps {
   activeDir: string
   onChange: (dir: string) => void
+  type?: 'cursor' | 'product'
 }
 
-export function DirectoryNav({ activeDir, onChange }: DirectoryNavProps) {
+export function DirectoryNav({
+  activeDir,
+  onChange,
+  type = 'cursor',
+}: DirectoryNavProps) {
+  const directories =
+    type === 'product' ? productDirectories : cursorDirectories
+
   return (
-    <div className="w-[160px] border-r border-border/50 pr-4">
-      <h2 className="text-sm font-medium text-muted-foreground mb-2">目录</h2>
-      <div className="space-y-1">
-        {directories.map(dir => (
-          <button
-            key={dir.id}
-            className={cn(
-              'w-full px-3 py-1.5 text-sm rounded-md text-left transition-colors',
-              'hover:bg-accent/50',
-              activeDir === dir.id
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground'
-            )}
-            onClick={() => onChange(dir.id)}
-          >
-            {dir.name}
-          </button>
-        ))}
-      </div>
+    <div className="w-48 space-y-1">
+      {directories.map(dir => (
+        <button
+          key={dir.id}
+          onClick={() => onChange(dir.id)}
+          className={cn(
+            'w-full flex items-center px-4 py-2 text-sm rounded-lg',
+            'hover:bg-accent transition-colors',
+            activeDir === dir.id
+              ? 'bg-accent font-medium'
+              : 'text-muted-foreground'
+          )}
+        >
+          {dir.icon && <span className="mr-2">{dir.icon}</span>}
+          <span>{dir.name}</span>
+        </button>
+      ))}
     </div>
   )
 }

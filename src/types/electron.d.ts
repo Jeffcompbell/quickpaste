@@ -3,10 +3,13 @@ interface Window {
     window: {
       minimize: () => void
       maximize: () => void
+      restore: () => void
       close: () => void
       hide: () => void
+      show: () => void
       togglePin: () => void
       getPinState: () => Promise<boolean>
+      getMaximizedState: () => Promise<boolean>
     }
     clipboard: {
       writeText: (text: string) => void

@@ -26,22 +26,40 @@ interface CategoryNavProps {
 
 export function CategoryNav({ activeCategory, onChange }: CategoryNavProps) {
   return (
-    <nav className="flex space-x-1 bg-muted/50 p-1 rounded-lg">
-      {categories.map(category => (
-        <button
-          key={category.id}
-          className={cn(
-            'flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-            'hover:bg-background/80',
-            activeCategory === category.id
-              ? 'bg-background shadow-sm'
-              : 'text-muted-foreground'
-          )}
-          onClick={() => onChange(category.id)}
-        >
-          {category.name}
-        </button>
-      ))}
-    </nav>
+    <div
+      className="flex items-center h-12 
+                 bg-white border-b border-neutral-200"
+    >
+      <nav className="inline-flex rounded-lg bg-neutral-100/50">
+        {categories.map((category, index) => (
+          <button
+            key={category.id}
+            onClick={() => onChange(category.id)}
+            className={cn(
+              'relative px-4 h-8 text-sm transition-all duration-150',
+              // Notion 风格的文本颜色
+              'text-neutral-500 hover:text-neutral-800',
+              // 选中状态
+              activeCategory === category.id && 'text-neutral-900 font-medium',
+              // 分隔线
+              index !== categories.length - 1 &&
+                activeCategory !== category.id &&
+                activeCategory !== categories[index + 1]?.id &&
+                'border-r border-neutral-200'
+            )}
+          >
+            {activeCategory === category.id && (
+              <div
+                className="absolute inset-0 
+                          bg-white
+                          rounded-lg
+                          shadow-sm"
+              />
+            )}
+            <span className="relative z-10">{category.name}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
   )
 }

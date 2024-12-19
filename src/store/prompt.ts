@@ -1,265 +1,178 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { Prompt, CursorPrompt, ProductPrompt, Category } from '@/types'
 
-const defaultPrompts: Prompt[] = [
-  {
-    id: crypto.randomUUID(),
-    title: 'TypeScript 代码审查',
-    content: `请帮我审查以下 TypeScript 代码，重点关注：
-1. 类型定义的准确性和完整性
-2. 代码结构和组织方式
-3. 潜在的性能问题
-4. 可能的安全隐患
-5. 是否符合最佳实践
+export type { Prompt }
 
-请提供具体的改进建议。`,
-    category: 'cursor-chat',
-    directory: 'default',
-    order: 0,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: crypto.randomUUID(),
-    title: 'React Native 性能优化',
-    content: `请帮我分析以下 React Native 代码的性能问题，包括：
-1. 组件重渲染优化
-2. useCallback 和 useMemo 的使用
-3. 列表性能优化
-4. 图片加载优化
-5. 动画性能优化
-
-请给出具体的优化建议和示例代码。`,
-    category: 'cursor-product',
-    directory: 'default',
-    order: 1,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: crypto.randomUUID(),
-    title: 'AI 助手系统提示词',
-    content: `你是一��的软件开发助手，专注于 TypeScript、React Native 和 Expo 开发。
-请遵循以下原则：
-
-1. 代码风格：
-- 使用 TypeScript 的严格模式
-- 优先使用函数式组件和 Hooks
-- 遵循 ESLint 和 Prettier 规范
-
-2. 性能考虑：
-- 优化重渲染
-- 合理使用缓存
-- 注意内存泄漏
-
-3. 最佳实践：
-- 组件职责单一
-- 状态管理清晰
-- 错误处理完善
-
-请基于这些原则提供建议和代码示例。`,
-    category: 'system-prompt',
-    directory: 'default',
-    order: 2,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-]
+interface PromptStore {
+  prompts: Prompt[]
+  activeCategory: string
+  categories: Category[]
+  isCompact: boolean
+  addPrompt: (
+    prompt: Omit<CursorPrompt, 'id'> | Omit<ProductPrompt, 'id'>
+  ) => void
+  editPrompt: (prompt: Prompt) => void
+  deletePrompt: (id: string) => void
+  reorderPrompt: (fromId: string, toId: string) => void
+  setActiveCategory: (id: string) => void
+  toggleCompact: () => void
+  reorderCategory: (fromId: string, toId: string) => void
+}
 
 const defaultCategories: Category[] = [
   {
     id: 'cursor-chat',
-    name: '对话提示词',
+    name: 'Cursor 对话',
+    type: 'cursor',
     order: 0,
   },
   {
     id: 'cursor-product',
-    name: '产品提示词',
+    name: 'Cursor 产品',
+    type: 'product',
     order: 1,
-  },
-  {
-    id: 'system-prompt',
-    name: '系统提示词',
-    order: 2,
   },
 ]
 
-export interface Category {
-  id: string
-  name: string
-  order: number
-}
+// 对话提示词的 mock 数据
+const mockCursorPrompts: Omit<CursorPrompt, 'id'>[] = [
+  // 默认目录
+  ...Array.from({ length: 4 }).map((_, i) => ({
+    type: 'cursor' as const,
+    title: `默认目录示例 ${i + 1}`,
+    content: `这是默认目录的快捷回复示例，你可以快速复制这段文本。这是第 ${i + 1} 条示例数据。`,
+    category: 'cursor-chat',
+    directory: 'default',
+    order: i,
+  })),
+  // 代码片段目录
+  ...Array.from({ length: 3 }).map((_, i) => ({
+    type: 'cursor' as const,
+    title: `代码片段示例 ${i + 1}`,
+    content: `// 这是代码片段示例 ${i + 1}\nfunction example() {\n  console.log('Hello World');\n}`,
+    category: 'cursor-chat',
+    directory: 'code',
+    order: i + 4,
+  })),
+  // 文本模板目录
+  ...Array.from({ length: 3 }).map((_, i) => ({
+    type: 'cursor' as const,
+    title: `文本模板示例 ${i + 1}`,
+    content: `这是一个文本模板示例，可以用于常用文本的快速输入。这是第 ${i + 1} 条示例数据。`,
+    category: 'cursor-chat',
+    directory: 'text',
+    order: i + 7,
+  })),
+]
 
-export interface Prompt {
-  id: string
-  title: string
-  content: string
-  category: string
-  directory?: string
-  order: number
-  createdAt: number
-  updatedAt: number
-}
+// 产品提示词的 mock 数据
+const mockProductPrompts: Omit<ProductPrompt, 'id'>[] = [
+  // 前端开发目录
+  ...Array.from({ length: 4 }).map((_, i) => ({
+    type: 'product' as const,
+    title: `前端开发需求 ${i + 1}`,
+    content: `这是一个前端开发需求示例，描述了一个前端功能的实现要求。\n\n功能描述：\n1. 实现响应式布局\n2. 支持暗色模式\n3. 优化加载性能\n\n这是第 ${i + 1} 条示例数据。`,
+    category: 'cursor-product',
+    directory: 'frontend',
+    author: `前端开发者 ${i + 1}`,
+    authorAvatar: `https://api.dicebear.com/7.x/avatars/svg?seed=frontend${i}`,
+    authorUrl: `https://github.com/frontend-author${i + 1}`,
+  })),
+  // 后端开发目录
+  ...Array.from({ length: 3 }).map((_, i) => ({
+    type: 'product' as const,
+    title: `后端开发需求 ${i + 1}`,
+    content: `这是一个后端开发需求示例，描述了一个API接口的实现要求。\n\n接口要求：\n1. RESTful API设计\n2. 数据验证\n3. 错误处理\n\n这是第 ${i + 1} 条示例数据。`,
+    category: 'cursor-product',
+    directory: 'backend',
+    author: `后端开发者 ${i + 1}`,
+    authorAvatar: `https://api.dicebear.com/7.x/avatars/svg?seed=backend${i}`,
+    authorUrl: `https://github.com/backend-author${i + 1}`,
+  })),
+  // 移动开发目录
+  ...Array.from({ length: 3 }).map((_, i) => ({
+    type: 'product' as const,
+    title: `移动开发需求 ${i + 1}`,
+    content: `这是一个移动开发需求示例，描述了一个移动端功能的实现要求。\n\n功能要求：\n1. 原生性能优化\n2. 手势交互\n3. 离线存储\n\n这是第 ${i + 1} 条示例数据。`,
+    category: 'cursor-product',
+    directory: 'mobile',
+    author: `移动开发者 ${i + 1}`,
+    authorAvatar: `https://api.dicebear.com/7.x/avatars/svg?seed=mobile${i}`,
+    authorUrl: `https://github.com/mobile-author${i + 1}`,
+  })),
+]
 
-interface PromptStore {
-  prompts: Prompt[]
-  categories: Category[]
-  activeCategory: string
-  isCompact: boolean
-  addPrompt: (
-    prompt: Omit<Prompt, 'id' | 'createdAt' | 'updatedAt' | 'order'>
-  ) => void
-  updatePrompt: (id: string, prompt: Partial<Prompt>) => void
-  deletePrompt: (id: string) => void
-  addCategory: (name: string) => void
-  deleteCategory: (id: string) => void
-  setActiveCategory: (id: string) => void
-  toggleCompact: () => void
-  reorderCategory: (activeId: string, overId: string) => void
-  reorderPrompt: (activeId: string, overId: string, category: string) => void
-  movePromptToCategory: (promptId: string, categoryId: string) => void
-}
-
-export const usePromptStore = create(
-  persist<PromptStore>(
-    (set, get) => ({
-      prompts: defaultPrompts,
+export const usePromptStore = create<PromptStore>()(
+  persist(
+    set => ({
+      prompts: [
+        ...mockCursorPrompts.map(p => ({ ...p, id: crypto.randomUUID() })),
+        ...mockProductPrompts.map(p => ({ ...p, id: crypto.randomUUID() })),
+      ],
       categories: defaultCategories,
       activeCategory: 'cursor-chat',
       isCompact: false,
-
-      addPrompt: prompt => {
-        const prompts = get().prompts
-        const maxOrder = Math.max(
-          0,
-          ...prompts
-            .filter(p => p.category === prompt.category)
-            .map(p => p.order)
-        )
-
+      addPrompt: prompt =>
         set(state => ({
           prompts: [
             ...state.prompts,
             {
               ...prompt,
               id: crypto.randomUUID(),
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              order: maxOrder + 1,
             },
           ],
-        }))
-      },
-
-      updatePrompt: (id, prompt) =>
-        set(state => ({
-          prompts: state.prompts.map(p =>
-            p.id === id ? { ...p, ...prompt, updatedAt: Date.now() } : p
-          ),
         })),
-
+      editPrompt: prompt =>
+        set(state => ({
+          prompts: state.prompts.map(p => (p.id === prompt.id ? prompt : p)),
+        })),
       deletePrompt: id =>
         set(state => ({
           prompts: state.prompts.filter(p => p.id !== id),
         })),
-
-      addCategory: name =>
-        set(state => {
-          const maxOrder = Math.max(0, ...state.categories.map(c => c.order))
-          const newId = crypto.randomUUID()
-          return {
-            categories: [
-              ...state.categories,
-              {
-                id: newId,
-                name,
-                order: maxOrder + 1,
-              },
-            ],
-          }
-        }),
-
-      deleteCategory: id =>
-        set(state => ({
-          categories: state.categories.filter(c => c.id !== id),
-        })),
-
-      setActiveCategory: id => set({ activeCategory: id }),
-
-      toggleCompact: () => set(state => ({ isCompact: !state.isCompact })),
-
-      reorderCategory: (activeId, overId) => {
-        set(state => {
-          const categories = [...state.categories]
-          const activeIndex = categories.findIndex(c => c.id === activeId)
-          const overIndex = categories.findIndex(c => c.id === overId)
-
-          if (activeIndex === -1 || overIndex === -1) return state
-
-          const [activeItem] = categories.splice(activeIndex, 1)
-          categories.splice(overIndex, 0, activeItem)
-
-          // 更新所有分类的顺序
-          return {
-            categories: categories.map((category, index) => ({
-              ...category,
-              order: index,
-            })),
-          }
-        })
-      },
-
-      reorderPrompt: (activeId, overId, category) => {
+      reorderPrompt: (fromId, toId) =>
         set(state => {
           const prompts = [...state.prompts]
-          const categoryPrompts = prompts.filter(p => p.category === category)
+          const fromIndex = prompts.findIndex(p => p.id === fromId)
+          const toIndex = prompts.findIndex(p => p.id === toId)
 
-          const activeIndex = categoryPrompts.findIndex(p => p.id === activeId)
-          const overIndex = categoryPrompts.findIndex(p => p.id === overId)
+          // 只对 cursor 类型的提示词进行排序
+          if (prompts[fromIndex].type !== 'cursor') return { prompts }
 
-          if (activeIndex === -1 || overIndex === -1) return state
+          const [removed] = prompts.splice(fromIndex, 1)
+          prompts.splice(toIndex, 0, removed)
 
-          const [activeItem] = categoryPrompts.splice(activeIndex, 1)
-          categoryPrompts.splice(overIndex, 0, activeItem)
-
-          // 更新当前分类中所有提示词的顺序
-          const updatedPrompts = prompts.map(prompt => {
-            if (prompt.category !== category) return prompt
-            const index = categoryPrompts.findIndex(p => p.id === prompt.id)
-            return {
-              ...prompt,
-              order: index,
-            }
+          // 更新顺序
+          const cursorPrompts = prompts.filter(p => p.type === 'cursor')
+          cursorPrompts.forEach((p, i) => {
+            p.order = i
           })
 
-          return { prompts: updatedPrompts }
-        })
-      },
-
-      movePromptToCategory: (promptId, categoryId) => {
-        set(state => {
-          const prompts = [...state.prompts]
-          const promptIndex = prompts.findIndex(p => p.id === promptId)
-
-          if (promptIndex === -1) return state
-
-          const maxOrder = Math.max(
-            0,
-            ...prompts.filter(p => p.category === categoryId).map(p => p.order)
-          )
-
-          prompts[promptIndex] = {
-            ...prompts[promptIndex],
-            category: categoryId,
-            order: maxOrder + 1,
-          }
-
           return { prompts }
-        })
-      },
+        }),
+      setActiveCategory: id => set({ activeCategory: id }),
+      toggleCompact: () => set(state => ({ isCompact: !state.isCompact })),
+      reorderCategory: (fromId, toId) =>
+        set(state => {
+          const categories = [...state.categories]
+          const fromIndex = categories.findIndex(c => c.id === fromId)
+          const toIndex = categories.findIndex(c => c.id === toId)
+
+          const [removed] = categories.splice(fromIndex, 1)
+          categories.splice(toIndex, 0, removed)
+
+          // 更新顺序
+          categories.forEach((c, i) => {
+            c.order = i
+          })
+
+          return { categories }
+        }),
     }),
     {
       name: 'prompt-storage',
+      version: 1,
     }
   )
 )
