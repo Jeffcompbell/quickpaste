@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { usePromptStore } from './prompt'
 
 export interface Directory {
   id: string
@@ -59,7 +60,8 @@ export const useDirectoryStore = create<DirectoryStore>()(
       hasContent: (directoryId: string) => {
         // TODO: 检查目录下是否有内容
         // 这里需要和 prompt store 集成
-        return false
+        const { prompts } = usePromptStore.getState()
+        return prompts.some(prompt => prompt.directory === directoryId)
       },
     }),
     {

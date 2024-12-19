@@ -4,6 +4,7 @@ import { usePromptStore } from '@/store/prompt'
 import { cn } from '@/lib/utils'
 import { cursorDirectories } from '@/config/directories'
 import type { Directory } from '@/types'
+import { PlusIcon } from './icons'
 
 const DEFAULT_AUTHOR = '林树'
 const DEFAULT_AUTHOR_URL =
@@ -13,7 +14,7 @@ const DEFAULT_AUTHOR_URL =
 function DefaultAvatar({ name }: { name: string }) {
   const firstChar = name.charAt(0)
   return (
-    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium text-primary">
+    <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">
       {firstChar}
     </div>
   )
@@ -47,15 +48,14 @@ export function PromptDialog({
 
     addPrompt({
       type: 'product',
+      id: crypto.randomUUID(),
       title,
       content,
-      category: 'cursor-product',
+      category: directory,
       directory,
       order: Date.now(),
       author,
-      authorAvatar:
-        authorAvatar ||
-        `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(author)}`,
+      authorAvatar: '',
       authorUrl,
     })
 
@@ -100,8 +100,9 @@ export function PromptDialog({
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <button className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
-          新建
+        <button className="px-4 h-9 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2">
+          <PlusIcon className="w-4 h-4" />
+          <span>新建提示词</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

@@ -1,16 +1,42 @@
+import { useState, useMemo } from 'react'
 import { Layout } from './app/layout'
 import { PromptList } from './components/prompt-list'
 import { PromptDialog } from './components/prompt-dialog'
 import { CategorySidebar } from './components/category-sidebar'
 import { ToolsGrid } from './components/tools-grid'
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Toaster } from 'react-hot-toast'
+import { SearchIcon } from './components/icons'
+import { usePromptStore } from './store/prompt'
 
 export function App() {
-  const [activeCategory, setActiveCategory] = useState('default')
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<'prompts' | 'tools'>(
     'prompts'
   )
+  const [searchQuery, setSearchQuery] = useState('')
+  const { prompts } = usePromptStore()
+
+  const filteredPrompts = useMemo(() => {
+    let filtered = prompts
+
+    // 如果选择了分类，先过滤分类
+    if (activeCategory) {
+      filtered = filtered.filter(prompt => prompt.directory === activeCategory)
+    }
+
+    // 如果有搜索关键词，再过滤标题和内容
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        prompt =>
+          prompt.title.toLowerCase().includes(query) ||
+          prompt.content.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered
+  }, [prompts, activeCategory, searchQuery])
 
   return (
     <Layout>
@@ -64,13 +90,27 @@ export function App() {
                   <div className="h-full">
                     <div className="flex items-center justify-between mb-6">
                       <h1 className="text-xl font-medium text-gray-700">
-                        快捷提示词
+                        {activeCategory ? '分类提示词' : '全部提示词'}
                       </h1>
-                      <PromptDialog activeDirectory={activeCategory} />
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="搜索提示词..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-[240px] h-9 pl-9 pr-4 text-sm rounded-md border border-gray-200 bg-white/80 focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors text-gray-900 placeholder:text-gray-400"
+                          />
+                          <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                        </div>
+                        <PromptDialog
+                          activeDirectory={activeCategory ?? 'default'}
+                        />
+                      </div>
                     </div>
                     <div className="h-[1px] bg-gradient-to-r from-black/[0.03] via-black/[0.07] to-black/[0.03] mb-6" />
                     <div className="h-[calc(100%-5rem)]">
-                      <PromptList category={activeCategory} />
+                      <PromptList prompts={filteredPrompts} />
                     </div>
                   </div>
                 </div>
@@ -105,6 +145,7 @@ export function App() {
           )}
         </div>
       </div>
+      <Toaster />
     </Layout>
   )
 }

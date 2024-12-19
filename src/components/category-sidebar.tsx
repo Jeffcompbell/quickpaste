@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { FolderIcon, PlusIcon, PencilIcon, TrashIcon } from './icons'
 import { useDirectoryStore } from '@/store/directory'
@@ -7,8 +7,8 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { toast } from 'react-hot-toast'
 
 interface CategorySidebarProps {
-  activeCategory: string
-  onCategoryChange: (category: string) => void
+  activeCategory: string | null
+  onCategoryChange: (category: string | null) => void
 }
 
 export function CategorySidebar({
@@ -22,6 +22,19 @@ export function CategorySidebar({
     id: string
     name: string
   } | null>(null)
+  const [directoryCounts, setDirectoryCounts] = useState<
+    Record<string, number>
+  >({})
+
+  // 计算每个目录下的提示词数量
+  useEffect(() => {
+    const counts: Record<string, number> = {}
+    prompts.forEach(prompt => {
+      const directory = prompt.directory || 'default'
+      counts[directory] = (counts[directory] || 0) + 1
+    })
+    setDirectoryCounts(counts)
+  }, [prompts])
 
   // 检查目录是否有内容
   const hasContent = (directoryId: string) => {
@@ -61,7 +74,7 @@ export function CategorySidebar({
   }
 
   return (
-    <div className="w-56 flex-shrink-0 p-4">
+    <div className="w-72 flex-shrink-0 p-4">
       <div
         className="h-full rounded-xl p-2 overflow-hidden"
         style={{
@@ -69,6 +82,7 @@ export function CategorySidebar({
             'linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.7))',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.5)',
+          WebkitAppRegion: 'no-drag',
         }}
       >
         <div className="flex items-center justify-between px-2 mb-2">
@@ -84,7 +98,10 @@ export function CategorySidebar({
             </Dialog.Trigger>
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 bg-black/10 backdrop-blur-sm" />
-              <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] bg-white/95 backdrop-blur-xl rounded-lg p-6 shadow-lg border border-gray-200">
+              <Dialog.Content
+                className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] bg-white/95 backdrop-blur-xl rounded-lg p-6 shadow-lg border border-gray-200"
+                style={{ WebkitAppRegion: 'no-drag' }}
+              >
                 <Dialog.Title className="text-lg font-semibold text-gray-900 mb-4">
                   新建目录
                 </Dialog.Title>
@@ -137,14 +154,40 @@ export function CategorySidebar({
           </Dialog.Root>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="space-y-1" style={{ WebkitAppRegion: 'no-drag' }}>
+          {/* 全部分类 */}
+          <div
+            className={cn(
+              'group flex items-center px-3 py-2 text-sm rounded-lg transition-all',
+              'hover:bg-black/[0.03]',
+              activeCategory === null
+                ? 'bg-black/[0.05] text-gray-900 font-medium'
+                : 'text-gray-600'
+            )}
+          >
+            <button
+              onClick={() => onCategoryChange(null)}
+              className="flex items-center flex-1 min-w-0 mr-3"
+            >
+              <FolderIcon className="w-4 h-4 mr-2 flex-shrink-0 opacity-60" />
+              <span className="truncate">全部</span>
+            </button>
+            <div className="flex items-center gap-1 flex-shrink-0 w-[68px] justify-end">
+              <span className="text-xs text-gray-400 tabular-nums">
+                {prompts.length}
+              </span>
+              <div className="w-[42px]" />
+            </div>
+          </div>
+
+          {/* 分类列表 */}
           {directories
             .sort((a, b) => a.order - b.order)
             .map(directory => (
               <div
                 key={directory.id}
                 className={cn(
-                  'group flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all',
+                  'group flex items-center px-3 py-2 text-sm rounded-lg transition-all',
                   'hover:bg-black/[0.03]',
                   activeCategory === directory.id
                     ? 'bg-black/[0.05] text-gray-900 font-medium'
@@ -153,12 +196,12 @@ export function CategorySidebar({
               >
                 <button
                   onClick={() => onCategoryChange(directory.id)}
-                  className="flex items-center flex-1"
+                  className="flex items-center flex-1 min-w-0 mr-3"
                 >
-                  <FolderIcon className="w-4 h-4 mr-2 opacity-60" />
+                  <FolderIcon className="w-4 h-4 mr-2 flex-shrink-0 opacity-60" />
                   {editingDirectory?.id === directory.id ? (
                     <form
-                      className="flex-1"
+                      className="flex-1 min-w-0"
                       onSubmit={e => {
                         e.preventDefault()
                         const name = (
@@ -179,10 +222,13 @@ export function CategorySidebar({
                       />
                     </form>
                   ) : (
-                    directory.name
+                    <span className="truncate">{directory.name}</span>
                   )}
                 </button>
-                {directory.id !== 'default' && !editingDirectory && (
+                <div className="flex items-center gap-1 flex-shrink-0 w-[68px] justify-end">
+                  <span className="text-xs text-gray-400 tabular-nums group-hover:hidden">
+                    {directoryCounts[directory.id] || 0}
+                  </span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() =>
@@ -204,7 +250,7 @@ export function CategorySidebar({
                       <TrashIcon className="w-3 h-3" />
                     </button>
                   </div>
-                )}
+                </div>
               </div>
             ))}
         </nav>
