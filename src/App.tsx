@@ -20,23 +20,28 @@ export function App() {
   const filteredPrompts = useMemo(() => {
     let filtered = prompts
 
-    // 如果选择了分类，先过滤分类
+    // 添加日志
+    console.log('Active Category:', activeCategory)
+    console.log('All Prompts:', prompts)
+    console.log(
+      'Prompts by Directory:',
+      prompts.reduce(
+        (acc, prompt) => {
+          acc[prompt.directory] = (acc[prompt.directory] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      )
+    )
+
     if (activeCategory) {
       filtered = filtered.filter(prompt => prompt.directory === activeCategory)
-    }
-
-    // 如果有搜索关键词，再过滤标题和内容
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        prompt =>
-          prompt.title.toLowerCase().includes(query) ||
-          prompt.content.toLowerCase().includes(query)
-      )
+      // 添加日志
+      console.log('Filtered Prompts:', filtered)
     }
 
     return filtered
-  }, [prompts, activeCategory, searchQuery])
+  }, [prompts, activeCategory])
 
   return (
     <Layout>
@@ -68,13 +73,13 @@ export function App() {
             </button>
           </div>
         </div>
-        <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 flex min-h-0">
+          <CategorySidebar
+            activeCategory={activeCategory}
+            onCategoryChange={setActiveCategory}
+          />
           {activeSection === 'prompts' ? (
             <>
-              <CategorySidebar
-                activeCategory={activeCategory}
-                onCategoryChange={setActiveCategory}
-              />
               <div className="flex-1 min-w-0">
                 <div
                   className="h-full rounded-2xl p-6 mx-4 mb-4 overflow-hidden"
@@ -149,5 +154,4 @@ export function App() {
     </Layout>
   )
 }
-
 export default App

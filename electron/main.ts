@@ -50,7 +50,7 @@ function setupIPCHandlers() {
         mainWindow.setFullScreen(true)
       }
     } else {
-      // Windows 处���方式
+      // Windows 处理方式
       if (mainWindow.isMaximized()) {
         mainWindow.restore()
       } else {

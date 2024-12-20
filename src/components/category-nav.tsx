@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
-import { type Prompt } from '@/store/prompt'
+import { usePromptStore } from '@/store/prompt'
+import type { ProductPrompt } from '@/types'
 
 const categories = [
   {
@@ -20,8 +21,8 @@ const categories = [
 ] as const
 
 interface CategoryNavProps {
-  activeCategory: Prompt['category']
-  onChange: (category: Prompt['category']) => void
+  activeCategory: ProductPrompt['category']
+  onChange: (category: ProductPrompt['category']) => void
 }
 
 export function CategoryNav({ activeCategory, onChange }: CategoryNavProps) {

@@ -36,7 +36,7 @@ const api = {
   },
 }
 
-// 使用 contextBridge 暴露 API 给渲染进程
+// ��用 contextBridge 暴露 API 给渲染进程
 contextBridge.exposeInMainWorld('electron', api)
 
 // 监听来自主进程的消息

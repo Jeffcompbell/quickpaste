@@ -1,35 +1,21 @@
 export type PromptType = 'cursor' | 'product'
 
-// 基础提示词类型
-interface BasePrompt {
-  id: string
-  type: PromptType
-  category: string
-  content: string
-  directory?: string
-  author?: string
-  authorAvatar?: string
-  authorUrl?: string
-}
-
-// 快捷复制对话提示词
-export interface CursorPrompt extends BasePrompt {
-  type: 'cursor'
-  title: string
-  order: number // 用于排序
-}
-
 // 产品需求提示词
-export interface ProductPrompt extends BasePrompt {
-  type: 'product'
+export interface ProductPrompt {
+  id: string
   title: string
+  content: string
+  directory: string
+  category: string
   author: string
-  authorAvatar: string
-  authorUrl: string
-  order: number // 添加 order 属性用于排序
+  authorUrl?: string
+  authorAvatar?: string
+  isSystem: boolean
+  type: 'product'
+  createTime?: number
+  updateTime?: number
 }
 
-export type Prompt = CursorPrompt | ProductPrompt
 export interface Category {
   id: string
   name: string
@@ -41,5 +27,5 @@ export interface Directory {
   id: string
   name: string
   icon?: React.ReactNode
-  type: 'cursor' | 'product' // 区分不同类型的目录
+  type: 'cursor' | 'product'
 }

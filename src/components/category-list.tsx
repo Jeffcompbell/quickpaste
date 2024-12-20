@@ -1,25 +1,66 @@
 import { cn } from '@/lib/utils'
 import {
   DndContext,
-  DragEndEvent,
   useSensor,
   useSensors,
   PointerSensor,
+  DragEndEvent,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
 import { usePromptStore } from '@/store/prompt'
-import { SortableItem } from './sortable-item'
+import type { Category } from '@/types'
 
-export function CategoryList() {
+function SortableItem({
+  id,
+  children,
+}: {
+  id: string
+  children: React.ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
+      id,
+    })
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        transition,
+      }
+    : undefined
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  )
+}
+
+interface CategoryListProps {
+  categories: Category[]
+  activeCategory: string | null
+  onCategoryChange: (category: string | null) => void
+}
+
+export function CategoryList({
+  categories,
+  activeCategory,
+  onCategoryChange,
+}: CategoryListProps) {
   const sensors = useSensors(useSensor(PointerSensor))
-  const { categories, reorderCategory, activeCategory, setActiveCategory } =
-    usePromptStore()
+  const { reorderCategory } = usePromptStore()
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id) {
-      reorderCategory(active.id as string, over.id as string)
-    }
+    if (!over) return
+
+    const oldIndex = categories.findIndex(cat => cat.id === active.id)
+    const newIndex = categories.findIndex(cat => cat.id === over.id)
+    reorderCategory(oldIndex, newIndex)
   }
 
   const sortedCategories = [...categories].sort((a, b) => a.order - b.order)
@@ -39,7 +80,7 @@ export function CategoryList() {
                   'hover:bg-accent',
                   activeCategory === category.id && 'bg-accent'
                 )}
-                onClick={() => setActiveCategory(category.id)}
+                onClick={() => onCategoryChange(category.id)}
               >
                 {category.name}
               </button>

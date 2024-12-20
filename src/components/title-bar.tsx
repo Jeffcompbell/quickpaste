@@ -1,23 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  MinimizeIcon,
-  MaximizeIcon,
-  RestoreIcon,
-  CloseIcon,
-  PinIcon,
-} from './icons'
-import { cn } from '@/lib/utils'
 import { getElectronAPI } from '@/lib/electron'
 
 const isMac = process.platform === 'darwin'
 
 export function TitleBar() {
-  const [isPinned, setIsPinned] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const electron = getElectronAPI()
 
   useEffect(() => {
-    electron.window.getPinState().then(setIsPinned)
     electron.window.getMaximizedState().then(setIsMaximized)
 
     // 监听窗口最大化状态变化
@@ -28,8 +18,10 @@ export function TitleBar() {
     }
 
     window.addEventListener('message', handleMaximizedChange)
-    return () => window.removeEventListener('message', handleMaximizedChange)
-  }, [])
+    const cleanup = () =>
+      window.removeEventListener('message', handleMaximizedChange)
+    return cleanup
+  }, [electron.window])
 
   const handleMinimize = useCallback(() => {
     console.log('Minimizing window...')
@@ -49,12 +41,6 @@ export function TitleBar() {
     console.log('Closing window...')
     electron.window.close()
   }, [electron.window])
-
-  const handlePin = useCallback(() => {
-    console.log('Toggling pin state...', isPinned)
-    electron.window.togglePin()
-    setIsPinned(!isPinned)
-  }, [isPinned, electron.window])
 
   if (isMac) {
     // macOS: 只显示标题和拖拽区域
