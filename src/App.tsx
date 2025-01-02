@@ -1,157 +1,117 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useEffect, memo } from 'react'
 import { Layout } from './app/layout'
-import { PromptList } from './components/prompt-list'
-import { PromptDialog } from './components/prompt-dialog'
 import { CategorySidebar } from './components/category-sidebar'
-import { ToolsGrid } from './components/tools-grid'
-import { cn } from '@/lib/utils'
+import { PromptList } from './components/prompt-list'
 import { Toaster } from 'react-hot-toast'
-import { SearchIcon } from './components/icons'
 import { usePromptStore } from './store/prompt'
+import { Header } from './components/header'
+import { PromptDialog } from './components/prompt-dialog'
 
-export function App() {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<'prompts' | 'tools'>(
-    'prompts'
+// 分离标题组件
+const CategoryTitle = memo(function CategoryTitle() {
+  const activeCategory = usePromptStore(state => state.activeCategory)
+  const categories = usePromptStore(state => state.categories)
+  const isLoading = usePromptStore(state => state.isLoading)
+
+  const title = useMemo(() => {
+    if (!activeCategory) return '全部提示词'
+    const category = categories.find(c => c.id === activeCategory)
+    return category ? category.name : '全部提示词'
+  }, [categories, activeCategory])
+
+  return (
+    <h2 className="text-lg font-semibold">
+      {title}
+      {isLoading && (
+        <span className="ml-2 text-sm text-gray-500">加载中...</span>
+      )}
+    </h2>
   )
-  const [searchQuery, setSearchQuery] = useState('')
-  const { prompts } = usePromptStore()
+})
+
+// 分离提示词列表容器组件
+const PromptListContainer = memo(function PromptListContainer() {
+  const activeCategory = usePromptStore(state => state.activeCategory)
+  const prompts = usePromptStore(state => state.prompts)
 
   const filteredPrompts = useMemo(() => {
-    let filtered = prompts
+    if (!activeCategory) return prompts
+    return prompts.filter(prompt => prompt.category === activeCategory)
+  }, [prompts, activeCategory])
 
-    // 添加日志
-    console.log('Active Category:', activeCategory)
-    console.log('All Prompts:', prompts)
-    console.log(
-      'Prompts by Directory:',
-      prompts.reduce(
-        (acc, prompt) => {
-          acc[prompt.directory] = (acc[prompt.directory] || 0) + 1
-          return acc
-        },
-        {} as Record<string, number>
-      )
-    )
+  return <PromptList prompts={filteredPrompts} />
+})
 
-    if (activeCategory) {
-      filtered = filtered.filter(prompt => prompt.directory === activeCategory)
-      // 添加日志
-      console.log('Filtered Prompts:', filtered)
+export default function App() {
+  const prompts = usePromptStore(state => state.prompts)
+  const categories = usePromptStore(state => state.categories)
+  const initializePrompts = usePromptStore(state => state.initializePrompts)
+
+  // 在组件挂载时初始化提示词
+  useEffect(() => {
+    console.log('App: Initializing prompts')
+    initializePrompts()
+  }, [initializePrompts])
+
+  // IPC 监听
+  useEffect(() => {
+    const electron = window.electron
+    if (!electron) return
+
+    const handleGetPrompts = () => {
+      console.log('App: Received get-prompts request')
+      const data = {
+        prompts: prompts,
+        categories: categories.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          isSystem: cat.isSystem,
+        })),
+      }
+      console.log('App: Sending prompts data:', data)
+      // 使用 invoke 代替 send
+      electron.ipcRenderer.invoke('prompts-data', data)
     }
 
-    return filtered
-  }, [prompts, activeCategory])
+    const removeListener = electron.ipcRenderer.on(
+      'get-prompts',
+      handleGetPrompts
+    )
+
+    return () => {
+      console.log('App: Cleaning up get-prompts listener')
+      removeListener
+    }
+  }, [prompts, categories])
+
+  // 添加日志以跟踪渲染
+  console.log('App: Rendering with prompts:', prompts.length)
 
   return (
     <Layout>
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-4 h-12">
-          <h2 className="text-base font-medium text-gray-800">提示词</h2>
-          <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
-            <button
-              onClick={() => setActiveSection('prompts')}
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                activeSection === 'prompts'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'hover:bg-background/50 hover:text-foreground'
-              )}
-            >
-              提示词
-            </button>
-            <button
-              onClick={() => setActiveSection('tools')}
-              className={cn(
-                'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                activeSection === 'tools'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'hover:bg-background/50 hover:text-foreground'
-              )}
-            >
-              工具导航
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 flex min-h-0">
-          <CategorySidebar
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
-          {activeSection === 'prompts' ? (
-            <>
-              <div className="flex-1 min-w-0">
-                <div
-                  className="h-full rounded-2xl p-6 mx-4 mb-4 overflow-hidden"
-                  style={{
-                    background:
-                      'linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.75))',
-                    backdropFilter: 'blur(20px)',
-                    boxShadow:
-                      '0 4px 24px -1px rgba(0, 0, 0, 0.04), 0 0 1px 0 rgba(0, 0, 0, 0.08)',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
-                  }}
-                >
-                  <div className="h-full">
-                    <div className="flex items-center justify-between mb-6">
-                      <h1 className="text-xl font-medium text-gray-700">
-                        {activeCategory ? '分类提示词' : '全部提示词'}
-                      </h1>
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="搜索提示词..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-[240px] h-9 pl-9 pr-4 text-sm rounded-md border border-gray-200 bg-white/80 focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors text-gray-900 placeholder:text-gray-400"
-                          />
-                          <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                        </div>
-                        <PromptDialog
-                          activeDirectory={activeCategory ?? 'default'}
-                        />
-                      </div>
-                    </div>
-                    <div className="h-[1px] bg-gradient-to-r from-black/[0.03] via-black/[0.07] to-black/[0.03] mb-6" />
-                    <div className="h-[calc(100%-5rem)]">
-                      <PromptList prompts={filteredPrompts} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 min-w-0">
-              <div
-                className="h-full rounded-2xl p-6 mx-4 mb-4 overflow-hidden"
-                style={{
-                  background:
-                    'linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.75))',
-                  backdropFilter: 'blur(20px)',
-                  boxShadow:
-                    '0 4px 24px -1px rgba(0, 0, 0, 0.04), 0 0 1px 0 rgba(0, 0, 0, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.5)',
-                }}
-              >
-                <div className="h-full">
-                  <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-xl font-medium text-gray-700">
-                      AI 工具导航
-                    </h1>
-                  </div>
-                  <div className="h-[1px] bg-gradient-to-r from-black/[0.03] via-black/[0.07] to-black/[0.03] mb-6" />
-                  <div className="h-[calc(100%-5rem)] overflow-auto">
-                    <ToolsGrid />
-                  </div>
-                </div>
+        <Header />
+        <div className="flex-1 flex overflow-hidden">
+          <CategorySidebar />
+          <div className="flex-1 flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4">
+              <CategoryTitle />
+              <div className="flex items-center space-x-4">
+                <input
+                  type="search"
+                  placeholder="搜索提示词..."
+                  className="px-3 py-1.5 text-sm border rounded-md w-64"
+                />
+                <PromptDialog />
               </div>
             </div>
-          )}
+            <div className="flex-1 overflow-auto px-6">
+              <PromptListContainer />
+            </div>
+          </div>
         </div>
       </div>
       <Toaster />
     </Layout>
   )
 }
-export default App

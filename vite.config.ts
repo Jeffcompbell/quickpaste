@@ -30,4 +30,12 @@ export default defineConfig({
   define: {
     'process.env.IS_ELECTRON': JSON.stringify(!!process.env.ELECTRON),
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        panel: resolve(__dirname, 'src/app/prompt-panel/prompt-panel.html'),
+      },
+    },
+  },
 })

@@ -5,27 +5,20 @@ export interface ProductPrompt {
   id: string
   title: string
   content: string
-  directory: string
   category: string
+  type: 'product'
   author: string
   authorUrl?: string
-  authorAvatar?: string
-  isSystem: boolean
-  type: 'product'
-  createTime?: number
-  updateTime?: number
+  createTime: number
+  updateTime: number
+  isSystem?: boolean
 }
 
+// 统一的分类接口
 export interface Category {
   id: string
   name: string
   type: PromptType
   order: number
-}
-
-export interface Directory {
-  id: string
-  name: string
-  icon?: React.ReactNode
-  type: 'cursor' | 'product'
+  isSystem?: boolean
 }

@@ -50,11 +50,18 @@
   }
 }
 
-.app-region-drag {
+.app-drag-region {
   -webkit-app-region: drag;
 }
 
-.app-region-no-drag {
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+button,
+input,
+select,
+[role='button'] {
   -webkit-app-region: no-drag;
 }
 

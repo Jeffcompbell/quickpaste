@@ -1,5 +1,5 @@
-import { ReactNode } from 'react'
-import { TitleBar } from '@/components/title-bar'
+import type { ReactNode } from 'react'
+import { TitleBar } from '../../components/title-bar'
 
 interface LayoutProps {
   children: ReactNode
@@ -7,9 +7,9 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   return (
-    <div className="flex flex-col h-screen bg-background/95 backdrop-blur-md rounded-lg overflow-hidden border border-border/50 shadow-lg">
+    <div className="flex flex-col h-screen">
       <TitleBar />
-      <main className="flex-1 p-4 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-hidden">{children}</main>
     </div>
   )
 }

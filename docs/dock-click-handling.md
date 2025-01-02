@@ -55,7 +55,7 @@ if (isMac) {
 }
 ```
 
-### 4. Dock 图标点击处���
+### 4. Dock 图标点击处
 
 ```typescript
 app.on('activate', () => {

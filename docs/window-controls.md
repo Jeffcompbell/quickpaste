@@ -58,7 +58,7 @@ mainWindow = new BrowserWindow({
   )}
 >
   <h1 className="text-sm font-medium text-gray-500 select-none pointer-events-none">
-    Quick Paste
+    ProPaste
   </h1>
 </div>
 ```

@@ -3,11 +3,12 @@ import { cn } from '@/lib/utils'
 
 interface LayoutProps {
   children: ReactNode
+  className?: string
 }
 
 const isMac = process.platform === 'darwin'
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, className }: LayoutProps) {
   const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
@@ -26,7 +27,8 @@ export function Layout({ children }: LayoutProps) {
       className={cn(
         'flex flex-col h-screen',
         'backdrop-blur-2xl',
-        !isMaximized && 'rounded-2xl overflow-hidden'
+        !isMaximized && 'rounded-2xl overflow-hidden',
+        className
       )}
       style={{
         background:
@@ -38,14 +40,13 @@ export function Layout({ children }: LayoutProps) {
     >
       <div
         className={cn(
-          'h-12 flex items-center justify-center',
+          'h-8 w-full bg-white border-b border-gray-200 flex items-center justify-center select-none',
           'app-drag-region',
           isMac ? 'pl-20' : 'pl-4'
         )}
+        style={{ WebkitAppRegion: 'drag' }}
       >
-        <h1 className="text-sm font-medium text-gray-500 select-none pointer-events-none">
-          Quick Paste
-        </h1>
+        <span className="text-sm text-gray-600">ProPaste</span>
       </div>
       <main className="flex-1 overflow-auto p-8">{children}</main>
     </div>

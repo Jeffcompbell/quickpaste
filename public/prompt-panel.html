@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+  <head>
+    <title>提示词面板</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Oxygen,
+          Ubuntu,
+          Cantarell,
+          'Open Sans',
+          'Helvetica Neue',
+          sans-serif;
+        background: rgba(255, 255, 255, 0.95);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 8px;
+      }
+
+      .search-container {
+        padding: 12px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.95);
+      }
+
+      .search-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .search-input {
+        width: 100%;
+        height: 36px;
+        padding: 0 12px 0 36px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        font-size: 14px;
+        background: white;
+        transition: all 0.2s;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: rgba(0, 0, 0, 0.2);
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+      }
+
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        width: 16px;
+        height: 16px;
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      .content {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      .sidebar {
+        width: 100px;
+        padding: 12px 8px;
+        border-right: 1px solid rgba(0, 0, 0, 0.06);
+        overflow-y: auto;
+      }
+
+      .category {
+        padding: 8px 12px;
+        margin-bottom: 4px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.6);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .category:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .category.active {
+        background: rgba(0, 0, 0, 0.06);
+        color: rgba(0, 0, 0, 0.8);
+        font-weight: 500;
+      }
+
+      .prompts {
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+      }
+
+      .prompt-card {
+        padding: 12px;
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .prompt-card:hover {
+        background: rgba(0, 0, 0, 0.01);
+        border-color: rgba(0, 0, 0, 0.12);
+      }
+
+      .prompt-title {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        color: rgba(0, 0, 0, 0.8);
+      }
+
+      .prompt-content {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.6);
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* 自定义滚动条 */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      /* Toast 提示 */
+      .toast {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 16px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 4px;
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/app/prompt-panel/page.tsx"></script>
+  </body>
+</html>

@@ -1,34 +1,8 @@
-export function isElectron(): boolean {
-  return !!(
-    typeof window !== 'undefined' &&
-    window.electron &&
-    process.env.IS_ELECTRON
-  )
-}
+/// <reference types="../../electron/electron-env" />
 
-export function getElectronAPI() {
-  if (!isElectron()) {
-    return {
-      window: {
-        minimize: () => {},
-        maximize: () => {},
-        restore: () => {},
-        close: () => {},
-        hide: () => {},
-        show: () => {},
-        togglePin: () => {},
-        getPinState: () => Promise.resolve(false),
-        getMaximizedState: () => Promise.resolve(false),
-      },
-      clipboard: {
-        writeText: (text: string) => {
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(text)
-          }
-        },
-        readText: () => '',
-      },
-    }
+export function getElectronAPI(): Window['electron'] | undefined {
+  if (typeof window !== 'undefined' && window.electron) {
+    return window.electron
   }
-  return window.electron
+  return undefined
 }

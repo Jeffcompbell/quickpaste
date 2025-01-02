@@ -1,379 +1,542 @@
 import {
   app,
   BrowserWindow,
-  globalShortcut,
-  screen,
   ipcMain,
   Tray,
+  clipboard,
+  screen,
   Menu,
+  IpcMainInvokeEvent,
 } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import Store from 'electron-store'
+import { autoUpdater } from 'electron-updater'
 
-interface WindowState {
-  x: number
-  y: number
-  width: number
-  height: number
-  isVisible: boolean
-}
-
-const store = new Store<{
-  windowState: WindowState
-}>()
-
+// 声明全局变量
 let mainWindow: BrowserWindow | null = null
-let tray: Tray | null = null
-let isAlwaysOnTop = false
+let promptPanel: BrowserWindow | null = null
+const tray: Tray | null = null
+let isQuitting = false
 const isMac = process.platform === 'darwin'
 
-// 添加一个标志来跟踪应用是否正在退出
-let isQuitting = false
+// 初始化 Store
+const store = new Store()
 
-// 添加 IPC 事件处理程序
-function setupIPCHandlers() {
-  ipcMain.on('window:minimize', () => {
-    console.log('Main: Received minimize command')
-    mainWindow?.minimize()
+// 判断是否是开发模式
+const isDevelopment = process.env.NODE_ENV !== 'production'
+const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
+
+// 定义存储数据的类型
+interface Prompt {
+  id: string
+  title: string
+  content: string
+  category: string
+  type: 'product'
+  author: string
+  authorUrl?: string
+  isSystem?: boolean
+  createTime: number
+  updateTime: number
+}
+
+interface Category {
+  id: string
+  name: string
+  isSystem?: boolean
+  createdAt?: string
+}
+
+interface SystemPrompt {
+  id: string
+  title: string
+  content: string
+  category?: string
+  author?: string
+  authorUrl?: string
+}
+
+interface SystemPrompts {
+  requirement?: SystemPrompt[]
+  debug?: SystemPrompt[]
+  deployment?: SystemPrompt[]
+  summary?: SystemPrompt[]
+}
+
+// 获取正确的 preload 脚本路径
+function getPreloadPath() {
+  // 在开发和生产环境下都使用编译后的 js 文件
+  return join(__dirname, 'preload.js')
+}
+
+// 初始化默认数据
+function initializeDefaultData() {
+  try {
+    // 从 system-prompts.json 加载系统预设提示词
+    const systemPromptsPath = isDevelopment
+      ? join(__dirname, '../src/config/system-prompts.json')
+      : join(__dirname, '../dist/config/system-prompts.json')
+
+    console.log('Loading system prompts from:', systemPromptsPath)
+    let systemPrompts
+    try {
+      systemPrompts = require(systemPromptsPath)
+      console.log('System prompts loaded successfully:', {
+        requirement: systemPrompts.requirement?.length || 0,
+        debug: systemPrompts.debug?.length || 0,
+        deployment: systemPrompts.deployment?.length || 0,
+        summary: systemPrompts.summary?.length || 0,
+      })
+    } catch (error) {
+      console.error('Failed to load system prompts:', error)
+      systemPrompts = {
+        requirement: [],
+        debug: [],
+        deployment: [],
+        summary: [],
+      }
+    }
+
+    // 获取现有数据
+    const existingPrompts = (store.get('prompts') || []) as Prompt[]
+    const existingCategories = (store.get('categories') || []) as Category[]
+    console.log('Existing data:', {
+      promptsCount: existingPrompts.length,
+      categoriesCount: existingCategories.length,
+    })
+
+    // 处理系统提示词
+    const processPrompt = (prompt: SystemPrompt, category: string): Prompt => ({
+      ...prompt,
+      category,
+      type: 'product',
+      author: 'System',
+      createTime: Date.now(),
+      updateTime: Date.now(),
+      isSystem: true,
+    })
+
+    // 只在没有数据时初始化
+    if (existingPrompts.length === 0) {
+      // 合并所有分类的系统提示词
+      const defaultPrompts = [
+        ...(systemPrompts.requirement || []).map((p: SystemPrompt) =>
+          processPrompt(p, 'requirement')
+        ),
+        ...(systemPrompts.debug || []).map((p: SystemPrompt) =>
+          processPrompt(p, 'debug')
+        ),
+        ...(systemPrompts.deployment || []).map((p: SystemPrompt) =>
+          processPrompt(p, 'deployment')
+        ),
+        ...(systemPrompts.summary || []).map((p: SystemPrompt) =>
+          processPrompt(p, 'summary')
+        ),
+      ]
+
+      console.log('Setting default prompts:', defaultPrompts.length)
+      store.set('prompts', defaultPrompts)
+    } else {
+      console.log('Using existing prompts:', existingPrompts.length)
+    }
+
+    if (existingCategories.length === 0) {
+      const defaultCategories = [
+        { id: 'requirement', name: '需求编写', isSystem: true },
+        { id: 'debug', name: 'Bug修复', isSystem: true },
+        { id: 'deployment', name: 'Git部署', isSystem: true },
+        { id: 'summary', name: '总结规范', isSystem: true },
+      ]
+      console.log('Setting default categories:', defaultCategories.length)
+      store.set('categories', defaultCategories)
+    } else {
+      console.log('Using existing categories:', existingCategories.length)
+    }
+
+    // 验证数据是否正确保存
+    const savedPrompts = store.get('prompts') as Prompt[] | undefined
+    const savedCategories = store.get('categories') as Category[] | undefined
+    console.log('Verification - Saved data:', {
+      promptsCount: savedPrompts?.length || 0,
+      categoriesCount: savedCategories?.length || 0,
+    })
+  } catch (error) {
+    console.error('Failed to initialize data:', error)
+  }
+}
+
+// 处理面板就绪事件
+ipcMain.on('panel:ready', () => {
+  console.log('Panel is ready, sending data')
+
+  try {
+    // 从 Store 中获取数据
+    const prompts = (store.get('prompts') as Prompt[]) || []
+    const categories = (store.get('categories') as Category[]) || []
+
+    // 从 system-prompts.json 加载系统预设提示词
+    const systemPromptsPath = isDevelopment
+      ? join(__dirname, '../src/config/system-prompts.json')
+      : join(__dirname, '../dist/config/system-prompts.json')
+
+    let systemPrompts: SystemPrompts = {
+      requirement: [],
+      debug: [],
+      deployment: [],
+      summary: [],
+    }
+
+    try {
+      systemPrompts = require(systemPromptsPath)
+      console.log('System prompts loaded successfully:', {
+        requirement: systemPrompts.requirement?.length || 0,
+        debug: systemPrompts.debug?.length || 0,
+        deployment: systemPrompts.deployment?.length || 0,
+        summary: systemPrompts.summary?.length || 0,
+      })
+    } catch (error) {
+      console.error('Failed to load system prompts:', error)
+    }
+
+    // 处理系统提示词
+    const processPrompt = (prompt: SystemPrompt, category: string): Prompt => ({
+      ...prompt,
+      category,
+      type: 'product',
+      author: 'System',
+      createTime: Date.now(),
+      updateTime: Date.now(),
+      isSystem: true,
+    })
+
+    // 合并系统提示词
+    const systemPromptsList = [
+      ...(systemPrompts.requirement || []).map(p =>
+        processPrompt(p, 'requirement')
+      ),
+      ...(systemPrompts.debug || []).map(p => processPrompt(p, 'debug')),
+      ...(systemPrompts.deployment || []).map(p =>
+        processPrompt(p, 'deployment')
+      ),
+      ...(systemPrompts.summary || []).map(p => processPrompt(p, 'summary')),
+    ]
+
+    // 合并系统提示词和用户提示词
+    const allPrompts = [...systemPromptsList, ...prompts]
+
+    console.log('Sending prompts data:', {
+      systemPromptsCount: systemPromptsList.length,
+      userPromptsCount: prompts.length,
+      totalPromptsCount: allPrompts.length,
+      categoriesCount: categories.length,
+    })
+
+    // 发送数据到面板
+    if (promptPanel && !promptPanel.isDestroyed()) {
+      promptPanel.webContents.send('prompts-data', {
+        prompts: allPrompts,
+        categories: categories.filter(cat => !cat.isSystem), // 只发送非系统分类
+      })
+    } else {
+      console.error('Panel window is not available')
+    }
+  } catch (error) {
+    console.error('Error sending prompts data:', error)
+  }
+})
+
+function createPromptPanel() {
+  console.log('Creating prompt panel window')
+  const preloadPath = getPreloadPath()
+  console.log('Using preload path:', preloadPath)
+
+  // 如果已存在且未销毁，则返回现有窗口
+  if (promptPanel && !promptPanel.isDestroyed()) {
+    console.log('Using existing panel window')
+    return promptPanel
+  }
+
+  // 获取主屏幕尺寸
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width } = primaryDisplay.workAreaSize
+
+  promptPanel = new BrowserWindow({
+    width: 380,
+    height: 600,
+    show: false,
+    frame: false,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 16, y: 16 },
+    hasShadow: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    x: width - 400,
+    y: 100,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: true,
+      preload: preloadPath,
+      devTools: true,
+    },
+    type: isMac ? 'panel' : 'toolbar',
+    alwaysOnTop: true,
+    focusable: true,
   })
 
-  ipcMain.on('window:maximize', () => {
-    console.log('Main: Received maximize command')
-    if (!mainWindow) return
+  // 加载面板页面
+  if (VITE_DEV_SERVER_URL) {
+    console.log('Loading panel from dev server:', VITE_DEV_SERVER_URL)
+    promptPanel.loadURL(
+      `${VITE_DEV_SERVER_URL}src/app/prompt-panel/prompt-panel.html`
+    )
+  } else {
+    console.log('Loading panel from production build')
+    promptPanel.loadFile(
+      resolve(__dirname, '../dist/src/app/prompt-panel/prompt-panel.html')
+    )
+  }
 
-    if (isMac) {
-      // macOS 处理方式
-      const isFullScreen = mainWindow.isFullScreen()
-      if (isFullScreen) {
-        mainWindow.setFullScreen(false)
-      } else {
-        mainWindow.setFullScreen(true)
-      }
-    } else {
-      // Windows 处理方式
-      if (mainWindow.isMaximized()) {
-        mainWindow.restore()
-      } else {
-        mainWindow.maximize()
-      }
+  // 开发时自动打开开发者工具
+  if (isDevelopment) {
+    promptPanel.webContents.openDevTools({ mode: 'detach' })
+  }
+
+  // 监听窗口准备就绪事件
+  promptPanel.once('ready-to-show', () => {
+    console.log('Panel window ready to show')
+    if (promptPanel) {
+      promptPanel.show()
     }
   })
 
-  ipcMain.on('window:restore', () => {
-    console.log('Main: Received restore command')
-    if (!mainWindow) return
+  return promptPanel
+}
 
-    if (isMac) {
-      mainWindow.setFullScreen(false)
+// Handle toggle panel command
+ipcMain.on('window:toggle-panel', () => {
+  console.log('Received window:toggle-panel command')
+
+  try {
+    if (promptPanel && !promptPanel.isDestroyed()) {
+      console.log('Panel exists, current visibility:', promptPanel.isVisible())
+      if (promptPanel.isVisible()) {
+        promptPanel.hide()
+        console.log('Panel hidden')
+      } else {
+        promptPanel.show()
+        promptPanel.focus() // 确保窗口获得焦点
+        console.log('Panel shown')
+      }
     } else {
+      console.log('Creating new panel')
+      const panel = createPromptPanel()
+      if (panel) {
+        panel.show()
+        panel.focus() // 确保窗口获得焦点
+        console.log('New panel created and shown')
+      }
+    }
+  } catch (error) {
+    console.error('Error handling panel toggle:', error)
+  }
+})
+
+// 处理窗口显示/隐藏命令
+ipcMain.on('window:show', () => {
+  console.log('Received window:show command')
+  mainWindow?.show()
+  if (mainWindow?.isMinimized()) {
+    mainWindow.restore()
+  }
+})
+
+ipcMain.on('window:hide', () => {
+  console.log('Received window:hide command')
+  mainWindow?.hide()
+})
+
+ipcMain.on('window:minimize', () => {
+  console.log('Received window:minimize command')
+  mainWindow?.minimize()
+})
+
+// 处理 dock 点击事件
+app.on('activate', () => {
+  console.log('App activated via dock click')
+  if (mainWindow === null) {
+    console.log('Main window is null, creating new window')
+    createWindow()
+  } else {
+    console.log('Showing existing main window')
+    mainWindow.show()
+    if (mainWindow.isMinimized()) {
       mainWindow.restore()
     }
-  })
+  }
+})
 
-  ipcMain.on('window:close', () => {
-    console.log('Main: Received close command')
-    if (isMac) {
-      app.hide()
-    } else {
-      mainWindow?.close()
-    }
-  })
-
-  ipcMain.on('window:hide', () => {
-    console.log('Main: Received hide command')
-    mainWindow?.hide()
-  })
-
-  ipcMain.on('window:show', () => {
-    console.log('Main: Received show command')
-    if (!mainWindow) return
-    mainWindow.show()
-    mainWindow.focus()
-
-    if (isAlwaysOnTop) {
-      if (isMac) {
-        mainWindow.setAlwaysOnTop(true, 'status', 1)
-        mainWindow.setVisibleOnAllWorkspaces(true, {
-          visibleOnFullScreen: true,
-          skipTransformProcessType: true,
-        })
-      } else {
-        mainWindow.setAlwaysOnTop(true, 'status', 1)
-      }
-    }
-  })
-
-  ipcMain.on('window:toggle-pin', () => {
-    console.log('Main: Received toggle-pin command')
-    if (!mainWindow) return
-    isAlwaysOnTop = !isAlwaysOnTop
-
-    if (isAlwaysOnTop) {
-      if (isMac) {
-        mainWindow.setAlwaysOnTop(true, 'status', 1)
-        mainWindow.setVisibleOnAllWorkspaces(true, {
-          visibleOnFullScreen: true,
-          skipTransformProcessType: true,
-        })
-        mainWindow.setWindowButtonVisibility(true)
-      } else {
-        mainWindow.setAlwaysOnTop(true)
-      }
-    } else {
-      mainWindow.setAlwaysOnTop(false)
-      if (isMac) {
-        mainWindow.setVisibleOnAllWorkspaces(false)
-      }
-    }
-    mainWindow.webContents.send('window:pinned', isAlwaysOnTop)
-  })
-
-  ipcMain.handle('window:get-pin-state', () => {
-    return isAlwaysOnTop
-  })
-
-  ipcMain.handle('window:get-maximized-state', () => {
-    if (!mainWindow) return false
-    return isMac ? mainWindow.isFullScreen() : mainWindow.isMaximized()
-  })
-}
-
-function createTray() {
-  // 创建托盘图标 - 根据平台选择合适的图标尺寸
-  const icon = isMac
-    ? join(__dirname, '../resources/tray-mac.png') // 16x16 for macOS
-    : join(__dirname, '../resources/tray.png') // 32x32 for Windows
-
-  tray = new Tray(icon)
-
-  // 设置托盘图标的提示文本
-  tray.setToolTip('QuickPaste')
-
-  // 点击托盘图标时显示/隐藏主窗口
-  tray.on('click', () => {
-    if (!mainWindow) return
-
-    if (mainWindow.isVisible()) {
-      mainWindow.hide()
-    } else {
-      const { width: screenWidth, height: screenHeight } =
-        screen.getPrimaryDisplay().workAreaSize
-      const windowState = store.get('windowState')
-      if (windowState) {
-        const { x, y, width, height } = windowState
-        const newX = Math.min(Math.max(0, x), screenWidth - width)
-        const newY = Math.min(Math.max(0, y), screenHeight - height)
-        mainWindow.setBounds({ x: newX, y: newY, width, height })
-      }
-      mainWindow.show()
-      mainWindow.focus()
-      if (isAlwaysOnTop) {
-        mainWindow.setAlwaysOnTop(true, 'floating')
-      }
-    }
-  })
-
-  // 禁用右键菜单
-  tray.setContextMenu(null)
-}
-
+// 创建主窗口
 function createWindow() {
-  const defaultState: WindowState = {
-    width: 400,
-    height: 500,
-    x: 0,
-    y: 0,
-    isVisible: false,
-  }
+  const preloadPath = getPreloadPath()
+  console.log('Main window using preload path:', preloadPath)
 
-  // 获取上次窗口状态
-  let windowState = store.get('windowState', defaultState)
-
-  // 确保窗口位置在可视区域内
-  const { width: screenWidth, height: screenHeight } =
-    screen.getPrimaryDisplay().workAreaSize
-  const { x, y, width, height } = windowState
-
-  // 检查窗口是否完全在屏幕外
-  if (x < 0 || x > screenWidth || y < 0 || y > screenHeight) {
-    windowState = {
-      ...windowState,
-      x: Math.round(screenWidth / 2 - width / 2),
-      y: Math.round(screenHeight / 2 - height / 2),
-    }
-  }
+  // 获取主屏幕尺寸
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width, height } = primaryDisplay.workAreaSize
 
   mainWindow = new BrowserWindow({
-    ...windowState,
-    frame: !isMac,
-    transparent: true,
-    alwaysOnTop: isAlwaysOnTop,
-    skipTaskbar: false,
+    width: Math.min(1440, width * 0.8),
+    height: Math.min(900, height * 0.8),
+    minWidth: 800,
+    minHeight: 600,
     show: false,
-    resizable: true,
-    minWidth: 300,
-    minHeight: 400,
-    maximizable: true,
-    fullscreenable: true,
-    hasShadow: true,
+    frame: false,
+    titleBarStyle: 'customButtonsOnHover',
+    trafficLightPosition: { x: 20, y: 16 },
+    backgroundColor: '#000000',
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      preload: join(__dirname, 'preload.js'),
-      webSecurity: true,
-      allowRunningInsecureContent: false,
+      preload: preloadPath,
     },
-    ...(isMac
-      ? {
-          titleBarStyle: 'hiddenInset',
-          trafficLightPosition: { x: 20, y: 18 },
-          vibrancy: 'window',
-          visualEffectState: 'active',
-        }
-      : {}),
   })
 
-  // 监听窗口状态变化
-  if (isMac) {
-    mainWindow.on('enter-full-screen', () => {
-      console.log('Main: Window entered full screen')
-      mainWindow?.webContents.send('window:maximized', true)
-    })
-
-    mainWindow.on('leave-full-screen', () => {
-      console.log('Main: Window left full screen')
-      mainWindow?.webContents.send('window:maximized', false)
-    })
-
-    // macOS 下点击关闭按钮时隐藏窗口而不是关闭
-    mainWindow.on('close', event => {
-      if (!isQuitting) {
-        event.preventDefault()
-        mainWindow?.hide()
-        return false
-      }
-      return true
-    })
+  // 获取正确的主窗口 HTML 路径
+  if (isDevelopment && VITE_DEV_SERVER_URL) {
+    console.log('Loading from dev server:', VITE_DEV_SERVER_URL)
+    mainWindow.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    mainWindow.on('maximize', () => {
-      console.log('Main: Window maximized')
-      mainWindow?.webContents.send('window:maximized', true)
-    })
-
-    mainWindow.on('unmaximize', () => {
-      console.log('Main: Window unmaximized')
-      mainWindow?.webContents.send('window:maximized', false)
-    })
+    const mainPath = join(__dirname, '../dist/index.html')
+    console.log('Loading from file:', mainPath)
+    mainWindow.loadFile(mainPath)
   }
 
-  mainWindow.on('minimize', () => {
-    console.log('Main: Window minimized')
-  })
-
-  // 加载页面
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-  } else {
-    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
+  // 在开发模式下打开开发者工具
+  if (isDevelopment) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
   }
 
-  // 开发时打开开发者工具
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools()
-  }
-
-  // 保存窗口状态
-  function saveWindowState() {
-    if (!mainWindow) return
-    const bounds = mainWindow.getBounds()
-    const isVisible = mainWindow.isVisible()
-    store.set('windowState', { ...bounds, isVisible })
-  }
-
-  mainWindow.on('close', saveWindowState)
-  mainWindow.on('moved', saveWindowState)
-  mainWindow.on('resize', saveWindowState)
-
-  // 显示窗口
   mainWindow.once('ready-to-show', () => {
+    console.log('Main window ready to show')
     mainWindow?.show()
   })
 
-  return mainWindow
-}
-
-// 在 app.whenReady() 之前添加输入法配置
-if (isMac) {
-  app.commandLine.appendSwitch('disable-features', 'IMEInputContextInBrowser')
-}
-
-app.whenReady().then(() => {
-  setupIPCHandlers()
-  createWindow()
-  createTray()
-
-  // 处理 macOS 下点击 dock 图标的行为
-  app.on('activate', () => {
-    if (mainWindow === null) {
-      createWindow()
-    } else {
-      mainWindow.show()
-      mainWindow.focus()
-      if (isMac) {
-        app.dock.show() // 显示 dock 图标
-      }
+  mainWindow.on('close', event => {
+    if (!isQuitting) {
+      event.preventDefault()
+      mainWindow?.hide()
     }
   })
-})
+}
 
-// 在应用退出前设置退出标志
-app.on('before-quit', () => {
-  isQuitting = true
-})
+// 应用程序准备就绪时的处理
+app.whenReady().then(() => {
+  console.log('App is ready')
+  initializeDefaultData()
+  createWindow()
 
-// 点击其他区域自动隐藏窗口
-app.on('browser-window-blur', () => {
-  if (mainWindow && !isAlwaysOnTop) {
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isFocused() && !isAlwaysOnTop) {
-        mainWindow.hide()
-      }
-    }, 100)
+  // macOS 特定的 dock 设置
+  if (isMac) {
+    app.dock.setMenu(Menu.buildFromTemplate([])) // 使用空菜单而不是 null
   }
 })
 
+// 当所有窗口关闭时退出应用
 app.on('window-all-closed', () => {
   if (!isMac) {
     app.quit()
   }
 })
 
-// 注销快捷键
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll()
+// 处理应用程序退出
+app.on('before-quit', () => {
+  console.log('App is quitting')
+  isQuitting = true
 })
 
-// 禁用硬件加速以避免某些渲染问题
-app.disableHardwareAcceleration()
+// 添加提示词
+ipcMain.handle(
+  'add-prompt',
+  async (
+    event: IpcMainInvokeEvent,
+    promptData: Omit<Prompt, 'id' | 'createTime' | 'updateTime'>
+  ) => {
+    try {
+      const prompts = (store.get('prompts') || []) as Prompt[]
+      const newPrompt: Prompt = {
+        id: Date.now().toString(),
+        ...promptData,
+        createTime: Date.now(),
+        updateTime: Date.now(),
+      }
 
-// 在应用退出时清理托盘图标
-app.on('before-quit', () => {
-  if (tray) {
-    tray.destroy()
+      store.set('prompts', [...prompts, newPrompt])
+
+      // 更新面板数据
+      promptPanel?.webContents.send('prompts-data', {
+        prompts: store.get('prompts') || [],
+        categories: store.get('categories') || [],
+      })
+
+      return { success: true, prompt: newPrompt }
+    } catch (error) {
+      console.error('Failed to add prompt:', error)
+      return { success: false, error: 'Failed to add prompt' }
+    }
+  }
+)
+
+// 添加分类
+ipcMain.handle(
+  'add-directory',
+  async (
+    event: IpcMainInvokeEvent,
+    directoryData: Omit<Category, 'id' | 'createdAt'>
+  ) => {
+    try {
+      const categories = (store.get('categories') || []) as Category[]
+      const newCategory: Category = {
+        id: Date.now().toString(),
+        ...directoryData,
+        createdAt: new Date().toISOString(),
+      }
+
+      store.set('categories', [...categories, newCategory])
+
+      // 更新面板数据
+      promptPanel?.webContents.send('prompts-data', {
+        prompts: store.get('prompts') || [],
+        categories: store.get('categories') || [],
+      })
+
+      return { success: true, category: newCategory }
+    } catch (error) {
+      console.error('Failed to add category:', error)
+      return { success: false, error: 'Failed to add category' }
+    }
+  }
+)
+
+// 添加剪贴板处理程序
+ipcMain.handle(
+  'clipboard:write-text',
+  async (_event: IpcMainInvokeEvent, text: string) => {
+    try {
+      clipboard.writeText(text)
+      return true
+    } catch (error) {
+      console.error('Failed to write to clipboard:', error)
+      throw error
+    }
+  }
+)
+
+ipcMain.handle('clipboard:read-text', async () => {
+  try {
+    return clipboard.readText()
+  } catch (error) {
+    console.error('Failed to read from clipboard:', error)
+    throw error
   }
 })
-
-// 处理 dock 右键菜单中的退出选项
-if (isMac) {
-  app.dock.setMenu(
-    Menu.buildFromTemplate([
-      {
-        label: '退出',
-        click: () => {
-          isQuitting = true
-          app.quit()
-        },
-      },
-    ])
-  )
-}

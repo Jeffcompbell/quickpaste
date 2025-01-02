@@ -14,7 +14,6 @@ export function PromptEditForm({ prompt, onClose }: PromptEditFormProps) {
   const [content, setContent] = useState(prompt.content)
   const [author, setAuthor] = useState(prompt.author)
   const [authorUrl, setAuthorUrl] = useState(prompt.authorUrl || '')
-  const [authorAvatar, setAuthorAvatar] = useState(prompt.authorAvatar || '')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,7 +23,6 @@ export function PromptEditForm({ prompt, onClose }: PromptEditFormProps) {
       content,
       author,
       authorUrl,
-      authorAvatar,
     })
     onClose()
     toast.success('保存成功', {
@@ -85,17 +83,6 @@ export function PromptEditForm({ prompt, onClose }: PromptEditFormProps) {
           type="url"
           value={authorUrl}
           onChange={e => setAuthorUrl(e.target.value)}
-          className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors text-gray-900"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          作者头像
-        </label>
-        <input
-          type="url"
-          value={authorAvatar}
-          onChange={e => setAuthorAvatar(e.target.value)}
           className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors text-gray-900"
         />
       </div>
