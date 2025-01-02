@@ -3,14 +3,14 @@
  */
 
 /**
- * 提示词分类
+ * 系统提示词分类
  */
-export type Category = 'cursor-chat' | 'cursor-product' | 'system-prompt'
+export type SystemCategory = 'requirement' | 'debug' | 'deployment' | 'summary'
 
 /**
- * 提示词目录
+ * 提示词分类
  */
-export type Directory = 'default' | 'custom'
+export type Category = SystemCategory | string
 
 /**
  * 提示词接口定义
@@ -28,11 +28,14 @@ export interface Prompt {
   /** 所属分类 */
   category: Category
 
-  /** 所属目录 */
-  directory?: Directory
+  /** 作者 */
+  author: string
 
-  /** 排序顺序 */
-  order: number
+  /** 作者 URL */
+  authorUrl?: string
+
+  /** 是否为系统提示词 */
+  isSystem?: boolean
 
   /** 创建时间 */
   createdAt: number
@@ -40,61 +43,3 @@ export interface Prompt {
   /** 更新时间 */
   updatedAt: number
 }
-
-/**
- * 示例提示词数据
- */
-const examplePrompt: Prompt = {
-  id: crypto.randomUUID(),
-  title: '代码审查',
-  content: '请帮我审查以下代码，指出潜在的问题和改进建议...',
-  category: 'cursor-chat',
-  directory: 'default',
-  order: 0,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-}
-
-/**
- * 新建提示词函数参数
- */
-export interface CreatePromptInput {
-  title: string
-  content: string
-  category: Category
-  directory?: Directory
-}
-
-/**
- * 更新提示词函数参数
- */
-export interface UpdatePromptInput {
-  id: string
-  title?: string
-  content?: string
-  category?: Category
-  directory?: Directory
-}
-
-/**
- * Store 操作示例：
- *
- * // 新建提示词
- * const newPrompt = addPrompt({
- *   title: '代码审查',
- *   content: '请帮我审查以下代码...',
- *   category: 'cursor-chat'
- * })
- *
- * // 更新提示词
- * updatePrompt({
- *   id: 'prompt-id',
- *   title: '更新后的标题'
- * })
- *
- * // 删除提示词
- * deletePrompt('prompt-id')
- *
- * // 重新排序
- * reorderPrompt('prompt-id-1', 'prompt-id-2', 'cursor-chat')
- */

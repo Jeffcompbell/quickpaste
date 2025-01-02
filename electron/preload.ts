@@ -7,7 +7,8 @@ import type {
   IpcSubscription,
   IpcHandler,
   ElectronAPI,
-  VersionInfo,
+  DeviceInfo,
+  ActivationResponse,
 } from './types'
 
 // 定义 API
@@ -87,7 +88,7 @@ const api: ElectronAPI = {
   app: {
     onShowAboutDialog: (callback: () => void): IpcSubscription => {
       console.log('Preload: Setting up show-about-dialog listener')
-      const subscription: IpcCallback = event => {
+      const subscription: IpcCallback = _event => {
         console.log('Preload: Received show-about-dialog event')
         callback()
       }
@@ -108,6 +109,9 @@ const api: ElectronAPI = {
         throw error
       }
     },
+    validateActivationCode: (code: string, deviceInfo: DeviceInfo) =>
+      ipcRenderer.invoke('app:validate-activation-code', code, deviceInfo),
+    platform: process.platform,
   },
 }
 

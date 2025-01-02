@@ -7,6 +7,7 @@ import { usePromptStore } from './store/prompt'
 import { Header } from './components/header'
 import { PromptDialog } from './components/prompt-dialog'
 import { AboutDialog } from './components/about-dialog'
+import { ActivationDialog } from './components/activation-dialog'
 
 // 分离标题组件
 const CategoryTitle = memo(function CategoryTitle() {
@@ -43,11 +44,27 @@ const PromptListContainer = memo(function PromptListContainer() {
   return <PromptList prompts={filteredPrompts} />
 })
 
-export default function App() {
+export function App() {
+  const [isActivated, setIsActivated] = useState(false)
   const prompts = usePromptStore(state => state.prompts)
   const categories = usePromptStore(state => state.categories)
   const initializePrompts = usePromptStore(state => state.initializePrompts)
   const [showAbout, setShowAbout] = useState(false)
+
+  // 检查激活状态
+  useEffect(() => {
+    const activationData = localStorage.getItem('activation_data')
+    if (activationData) {
+      try {
+        const data = JSON.parse(activationData)
+        if (data.status === 'activated') {
+          setIsActivated(true)
+        }
+      } catch (error) {
+        console.error('Failed to parse activation data:', error)
+      }
+    }
+  }, [])
 
   // 在组件挂载时初始化提示词
   useEffect(() => {
@@ -109,10 +126,20 @@ export default function App() {
     return () => {
       cleanup?.()
     }
-  }, [prompts, categories]) // 依赖项中包含 prompts 和 categories，这样它们更新时会自动发送新数据
+  }, [prompts, categories])
 
-  // 添加日志以跟踪渲染
-  console.log('App: Rendering with prompts:', prompts.length)
+  const handleActivate = () => {
+    setIsActivated(true)
+  }
+
+  if (!isActivated) {
+    return (
+      <>
+        <ActivationDialog open={true} onActivate={handleActivate} />
+        <Toaster />
+      </>
+    )
+  }
 
   return (
     <Layout>

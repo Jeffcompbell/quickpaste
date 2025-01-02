@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useEffect, useState } from 'react'
 import { getElectronAPI } from '@/lib/electron'
+import type { VersionInfo } from '@/types/electron'
 import { CloseIcon } from './icons'
-import type { VersionInfo } from '../../electron/types'
 
 interface AboutDialogProps {
   open: boolean
@@ -10,96 +10,79 @@ interface AboutDialogProps {
 }
 
 export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
-  const [versionInfo, setVersionInfo] = useState<VersionInfo>({
-    version: '0.1.0',
-    commit: 'unknown',
-    date: 'unknown',
-    electron: 'unknown',
-    electronBuildId: 'unknown',
-    chromium: 'unknown',
-    nodeVersion: 'unknown',
-    v8: 'unknown',
-    os: 'unknown',
-  })
+  const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
 
   useEffect(() => {
-    const electron = getElectronAPI()
-    console.log('About dialog: electron API available:', !!electron)
-
-    if (electron && open) {
-      console.log('About dialog: fetching version info...')
-      electron.app
-        .getVersionInfo()
-        .then((info: VersionInfo) => {
-          console.log('About dialog: received version info:', info)
-          setVersionInfo(info)
-        })
-        .catch((error: Error) => {
-          console.error('Failed to get version info:', error)
-        })
+    const loadVersionInfo = async () => {
+      try {
+        const electron = getElectronAPI()
+        if (!electron) return
+        const info = await electron.app.getVersionInfo()
+        setVersionInfo(info)
+      } catch (error) {
+        console.error('Failed to load version info:', error)
+      }
     }
-  }, [open])
+    loadVersionInfo()
+  }, [])
+
+  if (!versionInfo) return null
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] bg-white rounded-lg shadow-lg">
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <Dialog.Title className="text-xl font-semibold text-gray-900">
-                  ProPaste
-                </Dialog.Title>
-                <div className="mt-1 text-sm text-gray-500">
-                  版本 {versionInfo.version}
-                </div>
-              </div>
-              <Dialog.Close asChild>
-                <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
-                  <CloseIcon className="w-5 h-5 text-gray-500" />
-                </button>
-              </Dialog.Close>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg">
+          <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+            <Dialog.Title className="text-lg font-semibold leading-none tracking-tight">
+              关于 {versionInfo.name || 'ProPaste'}
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-muted-foreground">
+              版本信息
+            </Dialog.Description>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">版本</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.version}
+              </span>
             </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-[100px_1fr] gap-2">
-                <div className="text-gray-500">提交</div>
-                <div className="text-gray-900">{versionInfo.commit}</div>
-
-                <div className="text-gray-500">提交日期</div>
-                <div className="text-gray-900">{versionInfo.date}</div>
-
-                <div className="text-gray-500">Electron</div>
-                <div className="text-gray-900">{versionInfo.electron}</div>
-
-                <div className="text-gray-500">构建 ID</div>
-                <div className="text-gray-900">
-                  {versionInfo.electronBuildId}
-                </div>
-
-                <div className="text-gray-500">Chromium</div>
-                <div className="text-gray-900">{versionInfo.chromium}</div>
-
-                <div className="text-gray-500">Node.js</div>
-                <div className="text-gray-900">{versionInfo.nodeVersion}</div>
-
-                <div className="text-gray-500">V8</div>
-                <div className="text-gray-900">{versionInfo.v8}</div>
-
-                <div className="text-gray-500">系统</div>
-                <div className="text-gray-900">{versionInfo.os}</div>
-              </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Electron</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.electron}
+              </span>
             </div>
-
-            <div className="mt-6 flex justify-end">
-              <Dialog.Close asChild>
-                <button className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-                  关闭
-                </button>
-              </Dialog.Close>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Chromium</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.chromium}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Node.js</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.nodeVersion}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">V8</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.v8}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">操作系统</span>
+              <span className="text-sm text-muted-foreground">
+                {versionInfo.os}
+              </span>
             </div>
           </div>
+          <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <CloseIcon className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

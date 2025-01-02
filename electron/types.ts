@@ -41,15 +41,38 @@ export type IpcSubscription = () => void
 export type IpcHandler<T = unknown> = (...args: T[]) => void
 
 export interface VersionInfo {
+  name?: string
   version: string
-  commit: string
-  date: string
   electron: string
-  electronBuildId: string
   chromium: string
   nodeVersion: string
   v8: string
   os: string
+}
+
+export interface DeviceInfo {
+  deviceId: string
+  deviceName: string
+  os: string
+  ip: string
+  mac?: string
+  metadata?: {
+    appVersion: string
+    language: string
+    screenResolution: string
+  }
+}
+
+export interface ActivationResponse {
+  message: string
+  data: {
+    device: {
+      deviceId: string
+      deviceName: string
+      [key: string]: unknown
+    }
+    [key: string]: unknown
+  }
 }
 
 // Electron API 类型定义
@@ -91,5 +114,10 @@ export interface ElectronAPI {
   app: {
     onShowAboutDialog: (callback: () => void) => IpcSubscription
     getVersionInfo: () => Promise<VersionInfo>
+    validateActivationCode: (
+      code: string,
+      deviceInfo: DeviceInfo
+    ) => Promise<ActivationResponse>
+    platform: NodeJS.Platform
   }
 }

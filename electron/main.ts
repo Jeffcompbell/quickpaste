@@ -7,11 +7,25 @@ import {
   screen,
   Menu,
   IpcMainInvokeEvent,
+  shell,
+  dialog,
 } from 'electron'
 import { join, resolve } from 'path'
 import Store from 'electron-store'
 import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
+import { electronApp, optimizer } from '@electron-toolkit/utils'
+import icon from '../../resources/icon.png?asset'
+import {
+  DirectoryData,
+  ApiResponse,
+  DeviceInfo,
+  ActivationResponse,
+} from './types'
+import { loadPackageJson } from './utils'
+import fetch, { RequestInit } from 'node-fetch'
+import { Agent } from 'https'
+import { v4 as uuidv4 } from 'uuid'
 
 // 声明全局变量
 let mainWindow: BrowserWindow | null = null
@@ -72,6 +86,29 @@ interface PackageJson {
   author?: string
   dependencies?: Record<string, string>
   devDependencies?: Record<string, string>
+}
+
+// 添加自定义错误类型
+interface ActivationError extends Error {
+  type?: string
+  status?: number
+  message: string
+}
+
+// 添加响应数据类型
+interface ActivationResponseData {
+  success: boolean
+  message: string
+  data: {
+    activatedAt: string
+    expiresAt: string
+    device: {
+      deviceId: string
+      deviceName: string
+      [key: string]: unknown
+    }
+    [key: string]: unknown
+  }
 }
 
 // 获取正确的 preload 脚本路径
@@ -779,14 +816,144 @@ function loadSystemPrompts(systemPromptsPath: string): SystemPrompts {
   }
 }
 
-// 修改加载 package.json 的部分
-function loadPackageJson(): PackageJson {
-  try {
-    const pkgPath = join(__dirname, '../package.json')
-    const fileContent = readFileSync(pkgPath, 'utf-8')
-    return JSON.parse(fileContent) as PackageJson
-  } catch (error) {
-    console.error('Failed to load package.json:', error)
-    return { version: '0.0.0' }
+// 添加激活码验证处理程序
+ipcMain.handle(
+  'app:validate-activation-code',
+  async (
+    _event: IpcMainInvokeEvent,
+    code: string,
+    deviceInfo: DeviceInfo
+  ): Promise<ActivationResponse> => {
+    const API_ENDPOINT = 'https://activecode.vercel.app/api/codes/validate'
+    const APP_ID = 'app_fEFqY0K9jA'
+
+    // 最大重试次数
+    const MAX_RETRIES = 3
+    // 基础延迟时间（毫秒）
+    const BASE_DELAY = 1000
+    // 超时时间（毫秒）
+    const TIMEOUT = 30000 // 30 秒
+
+    async function attemptActivation(
+      attempt = 1
+    ): Promise<ActivationResponseData> {
+      try {
+        console.log(`Activation attempt ${attempt} of ${MAX_RETRIES}`)
+
+        const requestBody = {
+          code,
+          deviceId: deviceInfo.deviceId,
+          deviceName: deviceInfo.deviceName,
+          os: deviceInfo.os,
+          ip: deviceInfo.ip,
+          productId: 'app_fEFqY0K9jA',
+          metadata: {
+            appVersion: deviceInfo.metadata?.appVersion || '1.0.0',
+            language: deviceInfo.metadata?.language || 'zh-CN',
+          },
+        }
+
+        console.log('Request details:', {
+          url: API_ENDPOINT,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-ID': APP_ID,
+          },
+          body: requestBody,
+        })
+
+        const controller = new AbortController()
+        const timeout = setTimeout(() => {
+          console.log(`Request timeout after ${TIMEOUT}ms`)
+          controller.abort()
+        }, TIMEOUT)
+
+        try {
+          console.log('Sending request with headers:', {
+            'Content-Type': 'application/json',
+            'X-App-ID': APP_ID,
+          })
+
+          const agent = new Agent({
+            rejectUnauthorized: false,
+            keepAlive: true,
+            timeout: TIMEOUT,
+          })
+
+          const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-App-ID': APP_ID,
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal as AbortSignal,
+            agent,
+            timeout: TIMEOUT,
+          } as RequestInit)
+
+          console.log('Request sent successfully')
+          console.log('Response headers:', response.headers)
+
+          console.log('Response status:', response.status)
+          const data = await response.json()
+          console.log('Response data:', data)
+
+          if (!response.ok) {
+            let errorMessage = '激活失败'
+            switch (response.status) {
+              case 400:
+                if (data.message.includes('过期')) {
+                  errorMessage = '激活码已过期'
+                } else if (data.message.includes('限制')) {
+                  errorMessage = '激活码已达到最大设备数限制'
+                } else if (data.message.includes('已激活')) {
+                  errorMessage = '此设备已激活'
+                }
+                break
+              case 404:
+                errorMessage = '激活码无效'
+                break
+              case 500:
+                errorMessage = '服务器错误，请稍后重试'
+                break
+            }
+            throw new Error(errorMessage)
+          }
+
+          return data
+        } finally {
+          clearTimeout(timeout)
+        }
+      } catch (error) {
+        const err = error as ActivationError
+        console.error(`Activation attempt ${attempt} failed:`, err)
+        console.error('Error details:', {
+          name: err.name,
+          message: err.message,
+          type: err.type,
+          stack: err.stack,
+        })
+
+        // 如果是最后一次尝试，或者是非超时错误，直接抛出
+        if (
+          attempt >= MAX_RETRIES ||
+          (err.name !== 'AbortError' && !err.message.includes('ETIMEDOUT'))
+        ) {
+          throw err
+        }
+
+        // 计算延迟时间（指数退避）
+        const delay = BASE_DELAY * Math.pow(2, attempt - 1)
+        console.log(`Retrying in ${delay}ms...`)
+
+        // 等待一段时间后重试
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return attemptActivation(attempt + 1)
+      }
+    }
+
+    return attemptActivation()
   }
-}
+)

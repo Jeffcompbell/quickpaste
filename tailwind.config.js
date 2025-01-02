@@ -57,10 +57,15 @@ export default {
           from: { height: 'var(--radix-collapsible-content-height)' },
           to: { height: '0' },
         },
+        'content-show': {
+          from: { opacity: 0, transform: 'translate(-50%, -48%) scale(.96)' },
+          to: { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+        },
       },
       animation: {
         'collapsible-down': 'collapsible-down 0.2s ease-in-out',
         'collapsible-up': 'collapsible-up 0.2s ease-in-out',
+        'content-show': 'content-show 0.2s ease-out',
       },
     },
   },

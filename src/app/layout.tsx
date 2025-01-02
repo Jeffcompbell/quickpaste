@@ -1,12 +1,13 @@
 import { ReactNode, useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { getElectronAPI } from '@/lib/electron'
 
 interface LayoutProps {
   children: ReactNode
   className?: string
 }
 
-const isMac = process.platform === 'darwin'
+const isMac = getElectronAPI()?.app.platform === 'darwin'
 
 export function Layout({ children, className }: LayoutProps) {
   const [isMaximized, setIsMaximized] = useState(false)
