@@ -269,7 +269,7 @@ export function CategorySidebar() {
                     value={newCategoryName}
                     onChange={e => setNewCategoryName(e.target.value)}
                     className="w-full px-3 py-2 border rounded-md mb-4"
-                    placeholder="分类称"
+                    placeholder="请输入分类名称"
                     required
                   />
                   <div className="flex justify-end gap-2">

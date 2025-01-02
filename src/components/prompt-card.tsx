@@ -86,7 +86,7 @@ const ActionButtons = memo(function ActionButtons({
         e.stopPropagation()
       }}
     >
-      {onShare && (
+      {onShare && !isSystem && (
         <button
           onClick={e => {
             e.preventDefault()
@@ -289,7 +289,7 @@ export const PromptCard = memo(function PromptCard({
 }: PromptCardProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const isSystem = prompt.category === 'system'
+  const isSystem = prompt.isSystem || prompt.category === 'system'
 
   const handleCopy = useCallback(() => {
     onCopy(prompt.content)
@@ -297,7 +297,7 @@ export const PromptCard = memo(function PromptCard({
 
   const handleSave = useCallback(
     async (editedPrompt: ProductPrompt) => {
-      if (onEdit) {
+      if (onEdit && !isSystem) {
         try {
           await onEdit(editedPrompt)
           setIsEditOpen(false)
@@ -307,7 +307,7 @@ export const PromptCard = memo(function PromptCard({
         }
       }
     },
-    [onEdit]
+    [onEdit, isSystem]
   )
 
   return (
@@ -318,6 +318,7 @@ export const PromptCard = memo(function PromptCard({
           'border border-gray-100/80 hover:border-gray-200/80',
           'shadow-sm hover:shadow transition-all duration-200',
           'cursor-pointer select-none',
+          isSystem && 'bg-gray-50/80 hover:bg-gray-50',
           className
         )}
         onClick={() => setIsDetailOpen(true)}
@@ -327,10 +328,12 @@ export const PromptCard = memo(function PromptCard({
           <ActionButtons
             onCopy={handleCopy}
             isSystem={isSystem}
-            onEdit={onEdit ? () => setIsEditOpen(true) : undefined}
-            onDelete={onDelete ? () => onDelete(prompt.id) : undefined}
+            onEdit={!isSystem ? () => setIsEditOpen(true) : undefined}
+            onDelete={!isSystem ? () => onDelete?.(prompt.id) : undefined}
             onMove={
-              onMove ? categoryId => onMove(prompt.id, categoryId) : undefined
+              !isSystem
+                ? categoryId => onMove?.(prompt.id, categoryId)
+                : undefined
             }
           />
         </div>
@@ -355,7 +358,7 @@ export const PromptCard = memo(function PromptCard({
         onCopy={onCopy}
       />
 
-      {onEdit && (
+      {!isSystem && onEdit && (
         <PromptEditDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}

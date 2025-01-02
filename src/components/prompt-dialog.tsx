@@ -10,6 +10,9 @@ export function PromptDialog() {
   const [content, setContent] = useState('')
   const [category, setCategory] = useState('')
 
+  // 过滤出自定义分类
+  const customCategories = categories.filter(cat => !cat.isSystem)
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title || !content || !category) return
@@ -66,8 +69,8 @@ export function PromptDialog() {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors"
+                  required
                 />
-                {/* ... 其他代码保持不变 ... */}
               </div>
 
               <div className="space-y-2">
@@ -78,13 +81,13 @@ export function PromptDialog() {
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   className="w-full px-3 py-2 rounded-md border border-gray-200 bg-white focus:border-gray-300 focus:ring-1 focus:ring-gray-300 transition-colors min-h-[100px]"
+                  required
                 />
-                {/* ... 其他代码保持不变 ... */}
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  目录
+                  分类
                 </label>
                 <select
                   value={category}
@@ -95,7 +98,7 @@ export function PromptDialog() {
                   <option value="" disabled>
                     请选择分类
                   </option>
-                  {categories.map(cat => (
+                  {customCategories.map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
