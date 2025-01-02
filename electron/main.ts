@@ -10,12 +10,11 @@ import {
 } from 'electron'
 import { join, resolve } from 'path'
 import Store from 'electron-store'
-import { autoUpdater } from 'electron-updater'
 
 // 声明全局变量
 let mainWindow: BrowserWindow | null = null
 let promptPanel: BrowserWindow | null = null
-const tray: Tray | null = null
+let tray: Tray | null = null
 let isQuitting = false
 const isMac = process.platform === 'darwin'
 
@@ -258,7 +257,8 @@ function createPromptPanel() {
 
   // 获取主屏幕尺寸
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { width } = primaryDisplay.workAreaSize
+  const { workAreaSize } = primaryDisplay
+  const x = workAreaSize.width - 400
 
   promptPanel = new BrowserWindow({
     width: 380,
@@ -266,12 +266,12 @@ function createPromptPanel() {
     show: false,
     frame: false,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 16, y: 10 },
     hasShadow: true,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
-    x: width - 400,
+    x: x,
     y: 100,
     webPreferences: {
       nodeIntegration: true,
@@ -383,17 +383,16 @@ function createWindow() {
 
   // 获取主屏幕尺寸
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height } = primaryDisplay.workAreaSize
 
   mainWindow = new BrowserWindow({
-    width: Math.min(1440, width * 0.8),
-    height: Math.min(900, height * 0.8),
-    minWidth: 800,
-    minHeight: 600,
+    width: 1200,
+    height: 800,
+    minWidth: 1200,
+    minHeight: 800,
     show: false,
     frame: false,
     titleBarStyle: 'customButtonsOnHover',
-    trafficLightPosition: { x: 20, y: 16 },
+    trafficLightPosition: { x: 16, y: 10 },
     backgroundColor: '#000000',
     webPreferences: {
       nodeIntegration: true,
@@ -430,16 +429,105 @@ function createWindow() {
   })
 }
 
+// 创建托盘图标
+function createTray() {
+  const iconPath = isDevelopment
+    ? join(__dirname, '../src/assets/tray-mac.png')
+    : join(__dirname, '../dist/assets/tray-mac.png')
+
+  tray = new Tray(iconPath)
+  tray.setToolTip('ProPaste')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示主窗口',
+      click: () => {
+        mainWindow?.show()
+      },
+    },
+    {
+      label: '退出',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  // 点击托盘图标显示主窗口
+  tray.on('click', () => {
+    mainWindow?.show()
+  })
+}
+
 // 应用程序准备就绪时的处理
 app.whenReady().then(() => {
   console.log('App is ready')
   initializeDefaultData()
   createWindow()
+  createTray()
 
   // macOS 特定的 dock 设置
   if (isMac) {
     app.dock.setMenu(Menu.buildFromTemplate([])) // 使用空菜单而不是 null
   }
+
+  // 注册窗口状态相关的 IPC 处理程序
+  ipcMain.handle('window:get-maximized-state', () => {
+    return mainWindow?.isMaximized() || false
+  })
+
+  ipcMain.handle('window:get-pin-state', () => {
+    return mainWindow?.isAlwaysOnTop() || false
+  })
+
+  // 注册窗口控制相关的 IPC 处理程序
+  ipcMain.on('window:minimize', () => {
+    mainWindow?.minimize()
+  })
+
+  ipcMain.on('window:maximize', () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.restore()
+    } else {
+      mainWindow?.maximize()
+    }
+  })
+
+  ipcMain.on('window:restore', () => {
+    mainWindow?.restore()
+  })
+
+  ipcMain.on('window:close', () => {
+    mainWindow?.close()
+  })
+
+  ipcMain.on('window:hide', () => {
+    mainWindow?.hide()
+  })
+
+  ipcMain.on('window:show', () => {
+    mainWindow?.show()
+  })
+
+  ipcMain.on('window:toggle-pin', () => {
+    const isPinned = mainWindow?.isAlwaysOnTop() || false
+    mainWindow?.setAlwaysOnTop(!isPinned)
+  })
+
+  ipcMain.on('window:toggle-panel', () => {
+    if (promptPanel && !promptPanel.isDestroyed()) {
+      if (promptPanel.isVisible()) {
+        promptPanel.hide()
+      } else {
+        promptPanel.show()
+      }
+    } else {
+      createPromptPanel()
+    }
+  })
 })
 
 // 当所有窗口关闭时退出应用

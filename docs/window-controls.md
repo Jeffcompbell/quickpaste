@@ -31,7 +31,7 @@ mainWindow = new BrowserWindow({
   ...(isMac
     ? {
         titleBarStyle: 'hiddenInset', // macOS 显示原生窗口控制按钮
-        trafficLightPosition: { x: 20, y: 18 }, // 调整控制按钮位置
+        trafficLightPosition: { x: 16, y: 10 }, // 调整控制按钮位置
         vibrancy: 'window',
         visualEffectState: 'active',
       }

@@ -93,24 +93,31 @@ export function PromptPanel() {
   }
 
   return (
-    <div className="w-full h-full bg-white shadow-xl rounded-lg overflow-hidden flex flex-col">
-      {/* 使用 TitleBar 组件 */}
-      <TitleBar />
+    <div className="w-full h-full bg-[#fafafa] flex flex-col">
+      {/* 标题栏 */}
+      <div className="h-8 flex items-center bg-white px-3 window-drag relative border-b border-gray-200">
+        <div className="absolute left-3">
+          <TitleBar />
+        </div>
+        <div className="flex-1 text-center">
+          <span className="text-sm font-medium text-gray-600">ProPaste</span>
+        </div>
+      </div>
 
       {/* 搜索栏 */}
-      <div className="px-3 py-2 border-b border-gray-100">
-        <div className="relative">
+      <div className="px-4 py-2 bg-white border-b border-gray-200">
+        <div className="relative max-w-[720px] mx-auto">
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="搜索提示词..."
-            className="w-full px-3 py-1.5 pr-8 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            className="w-full px-3 py-1.5 pr-8 text-sm bg-[#fafafa] rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <svg
                 className="w-4 h-4"
@@ -130,18 +137,18 @@ export function PromptPanel() {
         </div>
       </div>
 
-      <div className="flex flex-1 h-0">
+      <div className="flex flex-1 overflow-hidden">
         {/* 左侧分类列表 */}
-        <div className="w-32 p-3 border-r border-gray-100/80 overflow-y-auto">
+        <div className="w-[100px] p-1.5 bg-white border-r border-gray-200">
           {/* 全部分类 */}
           <div
             key="all"
             className={cn(
-              'px-3 py-2 mb-1 rounded-lg text-sm cursor-pointer',
+              'px-2 py-1 mb-0.5 rounded-md text-sm cursor-pointer truncate',
               'transition-colors duration-200',
-              'hover:bg-gray-100/80',
+              'hover:bg-[#fafafa]',
               activeCategory === 'all'
-                ? 'bg-gray-100/80 text-gray-900 font-medium'
+                ? 'bg-[#fafafa] text-gray-900 font-medium'
                 : 'text-gray-600'
             )}
             onClick={() => setActiveCategory('all')}
@@ -159,11 +166,11 @@ export function PromptPanel() {
               <div
                 key={category.id}
                 className={cn(
-                  'px-3 py-2 mb-1 rounded-lg text-sm cursor-pointer',
+                  'px-2 py-1 mb-0.5 rounded-md text-sm cursor-pointer truncate',
                   'transition-colors duration-200',
-                  'hover:bg-gray-100/80',
+                  'hover:bg-[#fafafa]',
                   activeCategory === category.id
-                    ? 'bg-gray-100/80 text-gray-900 font-medium'
+                    ? 'bg-[#fafafa] text-gray-900 font-medium'
                     : 'text-gray-600'
                 )}
                 onClick={() => setActiveCategory(category.id)}
@@ -177,49 +184,51 @@ export function PromptPanel() {
         </div>
 
         {/* 右侧提示词列表 */}
-        <div className="flex-1 p-3 overflow-y-auto space-y-2">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div
-                  key={i}
-                  className="h-[72px] bg-gray-100/80 rounded-lg animate-pulse"
-                />
-              ))}
-            </div>
-          ) : filteredPrompts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
-              <svg
-                className="w-12 h-12"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
-                />
-              </svg>
-              <div className="text-sm">
-                {searchQuery ? '未找到匹配的提示词' : '该分类下暂无提示词'}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-3 max-w-[720px] mx-auto">
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className="h-[60px] bg-white rounded-lg animate-pulse shadow-sm"
+                  />
+                ))}
               </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredPrompts.map(prompt => (
-                <PromptCard
-                  key={prompt.id}
-                  prompt={prompt}
-                  onCopy={handleCopy}
-                  categoryName={
-                    categories.find(c => c.id === prompt.category)?.name
-                  }
-                />
-              ))}
-            </div>
-          )}
+            ) : filteredPrompts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
+                <svg
+                  className="w-12 h-12"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"
+                  />
+                </svg>
+                <div className="text-sm">
+                  {searchQuery ? '未找到匹配的提示词' : '该分类下暂无提示词'}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredPrompts.map(prompt => (
+                  <PromptCard
+                    key={prompt.id}
+                    prompt={prompt}
+                    onCopy={handleCopy}
+                    categoryName={
+                      categories.find(c => c.id === prompt.category)?.name
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

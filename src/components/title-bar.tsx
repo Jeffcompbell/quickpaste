@@ -15,9 +15,9 @@ export function TitleBar() {
   }, [electron])
 
   return (
-    <div className="h-8 flex items-center justify-between webkit-app-region-drag bg-transparent">
+    <div className="h-8 flex items-center justify-start webkit-app-region-drag bg-transparent">
       {/* macOS 红绿灯占位，不需要实际按钮，系统会自动显示 */}
-      <div className="flex-1 h-full" />
+      <div className="w-20 h-full" />
     </div>
   )
 }

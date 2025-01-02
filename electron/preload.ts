@@ -3,7 +3,6 @@ import type {
   PromptData,
   DirectoryData,
   PanelData,
-  IpcEvent,
   IpcCallback,
   IpcSubscription,
   IpcHandler,
@@ -91,13 +90,6 @@ ipcRenderer.on('ensure-panel-ready', () => {
   console.log('Preload: Received ensure-panel-ready signal')
   ipcRenderer.send('panel:ready')
 })
-
-// 声明全局类型
-declare global {
-  interface Window {
-    electron: ElectronAPI
-  }
-}
 
 // 只在 window.electron 未定义时暴露 API
 if (!window.electron) {

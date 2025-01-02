@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { ProductPrompt } from '../types'
 import { cn } from '../lib/utils'
 import {
@@ -14,8 +14,6 @@ import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { usePromptStore } from '../store/prompt'
 import { PromptEditDialog } from './prompt-edit-dialog'
-import { getElectronAPI } from '../lib/electron'
-import { toast } from 'react-hot-toast'
 
 interface PromptCardProps {
   prompt: ProductPrompt
@@ -256,135 +254,77 @@ export const PromptCard = memo(function PromptCard({
   categoryName = '未分类',
   className,
 }: PromptCardProps) {
-  const [dialogState, setDialogState] = useState({
-    showEditDialog: false,
-    showDetailDialog: false,
-  })
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const isSystem = prompt.category === 'system'
 
-  const handleCopyClick = useCallback(() => {
+  const handleCopy = useCallback(() => {
     onCopy(prompt.content)
   }, [onCopy, prompt.content])
 
-  const handleShare = useCallback(() => {
-    if (prompt.authorUrl) {
-      window.open(prompt.authorUrl, '_blank')
-    }
-  }, [prompt.authorUrl])
-
-  const handleEdit = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    setDialogState(prev => ({ ...prev, showEditDialog: true }))
-  }, [])
-
-  const handleDelete = useCallback(
-    (e?: React.MouseEvent) => {
-      e?.stopPropagation()
-      if (onDelete) {
-        onDelete(prompt.id)
+  const handleSave = useCallback(
+    (editedPrompt: ProductPrompt) => {
+      if (onEdit) {
+        onEdit(editedPrompt)
       }
-    },
-    [onDelete, prompt.id]
-  )
-
-  const handleMove = useCallback(
-    (categoryId: string) => {
-      if (onMove) {
-        onMove(prompt.id, categoryId)
-      }
-    },
-    [onMove, prompt.id]
-  )
-
-  const handleEditSave = useCallback(
-    async (editedPrompt: ProductPrompt) => {
-      try {
-        if (onEdit) {
-          await onEdit(editedPrompt)
-        }
-      } catch (error) {
-        console.error('Failed to save:', error)
-        throw error
-      }
+      setIsEditOpen(false)
     },
     [onEdit]
   )
 
-  const handleCardClick = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.action-buttons')) {
-      return
-    }
-    setDialogState(prev => ({ ...prev, showDetailDialog: true }))
-  }, [])
-
-  // 处理提示词复制
-  const handleCopy = async (content: string) => {
-    const electron = getElectronAPI()
-    if (!electron?.ipcRenderer) {
-      // 如果 Electron API 不可用，回退到 Web API
-      try {
-        await navigator.clipboard.writeText(content)
-        toast.success('已复制到剪贴板')
-      } catch (error) {
-        console.error('Failed to copy:', error)
-        toast.error('复制失败')
-      }
-      return
-    }
-
-    try {
-      await electron.ipcRenderer.send('clipboard:write-text', content)
-      toast.success('已复制到剪贴板')
-    } catch (error) {
-      console.error('Failed to copy:', error)
-      toast.error('复制失败')
-    }
-  }
-
   return (
     <>
       <div
-        onClick={handleCardClick}
         className={cn(
-          'group relative flex items-start p-4 bg-white hover:bg-gray-50 rounded-xl border border-gray-100/80',
-          'transition-colors duration-200 cursor-pointer',
+          'group w-full bg-white/80 hover:bg-white rounded-lg p-3',
+          'border border-gray-100/80 hover:border-gray-200/80',
+          'shadow-sm hover:shadow transition-all duration-200',
+          'cursor-pointer select-none',
           className
         )}
+        onClick={() => setIsDetailOpen(true)}
       >
-        <CardContent title={prompt.title} content={prompt.content} />
-        <div className="action-buttons">
+        <div className="flex items-start gap-3">
+          <CardContent title={prompt.title} content={prompt.content} />
           <ActionButtons
-            onCopy={handleCopyClick}
-            onShare={prompt.authorUrl ? handleShare : undefined}
-            isSystem={!!prompt.isSystem}
-            onEdit={!prompt.isSystem && onEdit ? handleEdit : undefined}
-            onDelete={!prompt.isSystem && onDelete ? handleDelete : undefined}
-            onMove={!prompt.isSystem && onMove ? handleMove : undefined}
+            onCopy={handleCopy}
+            isSystem={isSystem}
+            onEdit={onEdit ? () => setIsEditOpen(true) : undefined}
+            onDelete={onDelete ? () => onDelete(prompt.id) : undefined}
+            onMove={
+              onMove ? categoryId => onMove(prompt.id, categoryId) : undefined
+            }
           />
+        </div>
+        <div className="mt-2 flex items-center text-xs text-gray-400 border-t border-gray-100/80 pt-2">
+          <span>{categoryName}</span>
+          <span className="mx-1">·</span>
+          <span>{formatDate(prompt.createTime)}</span>
+          {prompt.author && (
+            <>
+              <span className="mx-1">·</span>
+              <span>{prompt.author}</span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 编辑对话框 */}
-      {onEdit && (
-        <PromptEditDialog
-          open={dialogState.showEditDialog}
-          onOpenChange={open =>
-            setDialogState(prev => ({ ...prev, showEditDialog: open }))
-          }
-          prompt={prompt}
-          onSave={handleEditSave}
-        />
-      )}
-
-      {/* 详情对话框 */}
       <DetailDialog
-        open={dialogState.showDetailDialog}
-        onOpenChange={open =>
-          setDialogState(prev => ({ ...prev, showDetailDialog: open }))
-        }
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
         prompt={prompt}
         categoryName={categoryName}
-        onCopy={handleCopy}
+        onCopy={onCopy}
       />
+
+      {onEdit && (
+        <PromptEditDialog
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          prompt={prompt}
+          onSave={handleSave}
+        />
+      )}
     </>
   )
 })

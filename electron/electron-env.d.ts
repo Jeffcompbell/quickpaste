@@ -10,7 +10,7 @@ declare namespace NodeJS {
   }
 }
 
-interface ElectronAPI {
+export interface ElectronAPI {
   window: {
     minimize: () => void
     maximize: () => void
@@ -53,8 +53,9 @@ interface ElectronAPI {
 }
 
 declare global {
+  // @ts-expect-error Window interface augmentation
   interface Window {
-    electron: ElectronAPI
+    electron: ElectronAPI | undefined
   }
 }
 
