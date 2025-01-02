@@ -21,15 +21,26 @@ export const PromptList = memo(function PromptList({
 
   // 记忆化回调函数
   const handleEdit = useCallback(
-    (prompt: ProductPrompt) => {
-      updatePrompt(prompt)
+    async (prompt: ProductPrompt) => {
+      try {
+        await updatePrompt(prompt)
+      } catch (error) {
+        console.error('Failed to update prompt:', error)
+        toast.error('保存失败')
+      }
     },
     [updatePrompt]
   )
 
   const handleDelete = useCallback(
-    (id: string) => {
-      deletePrompt(id)
+    async (id: string) => {
+      try {
+        await deletePrompt(id)
+        toast.success('删除成功')
+      } catch (error) {
+        console.error('Failed to delete prompt:', error)
+        toast.error('删除失败')
+      }
     },
     [deletePrompt]
   )
@@ -46,10 +57,16 @@ export const PromptList = memo(function PromptList({
   }, [])
 
   const handleMove = useCallback(
-    (promptId: string, categoryId: string) => {
+    async (promptId: string, categoryId: string) => {
       const prompt = prompts.find(p => p.id === promptId)
       if (prompt) {
-        updatePrompt({ ...prompt, category: categoryId })
+        try {
+          await updatePrompt({ ...prompt, category: categoryId })
+          toast.success('移动成功')
+        } catch (error) {
+          console.error('Failed to move prompt:', error)
+          toast.error('移动失败')
+        }
       }
     },
     [prompts, updatePrompt]

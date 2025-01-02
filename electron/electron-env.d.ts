@@ -1,6 +1,11 @@
 /// <reference types="vite-plugin-electron/electron-env" />
 
 import type { ProductPrompt, Category } from '../src/types'
+import type {
+  ElectronAPI as BaseElectronAPI,
+  VersionInfo,
+  ApiResponse,
+} from './types'
 
 declare namespace NodeJS {
   interface ProcessEnv {
@@ -10,50 +15,18 @@ declare namespace NodeJS {
   }
 }
 
-export interface ElectronAPI {
-  window: {
-    minimize: () => void
-    maximize: () => void
-    restore: () => void
-    close: () => void
-    hide: () => void
-    show: () => void
-    togglePin: () => void
-    togglePanel: () => void
-    getPinState: () => Promise<boolean>
-    getMaximizedState: () => Promise<boolean>
-  }
-  clipboard: {
-    writeText: (text: string) => Promise<void>
-    readText: () => Promise<string>
-  }
-  ipcRenderer: {
-    on: (channel: string, callback: (data: unknown) => void) => () => void
-    send: (channel: string, data?: unknown) => void
-    once: (channel: string, callback: (data: unknown) => void) => void
-    removeAllListeners: (channel: string) => void
-  }
-  panel: {
-    ready: () => void
-    onData: (
-      callback: (data: {
-        prompts: ProductPrompt[]
-        categories: Category[]
-      }) => void
-    ) => () => void
-  }
+export interface ElectronAPI extends Omit<BaseElectronAPI, 'prompt'> {
   prompt: {
     add: (
       promptData: Omit<ProductPrompt, 'id' | 'createTime' | 'updateTime'>
     ) => Promise<{ success: boolean; data?: ProductPrompt; error?: string }>
     addDirectory: (
-      directoryData: Omit<Category, 'id' | 'createdAt'>
+      directoryData: Omit<Category, 'id' | 'type' | 'order'>
     ) => Promise<{ success: boolean; data?: Category; error?: string }>
   }
 }
 
 declare global {
-  // @ts-expect-error Window interface augmentation
   interface Window {
     electron: ElectronAPI | undefined
   }

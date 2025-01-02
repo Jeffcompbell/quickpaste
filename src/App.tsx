@@ -1,4 +1,4 @@
-import { useMemo, useEffect, memo } from 'react'
+import { useEffect, useState, memo, useMemo } from 'react'
 import { Layout } from './app/layout'
 import { CategorySidebar } from './components/category-sidebar'
 import { PromptList } from './components/prompt-list'
@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast'
 import { usePromptStore } from './store/prompt'
 import { Header } from './components/header'
 import { PromptDialog } from './components/prompt-dialog'
+import { AboutDialog } from './components/about-dialog'
 
 // 分离标题组件
 const CategoryTitle = memo(function CategoryTitle() {
@@ -46,6 +47,7 @@ export default function App() {
   const prompts = usePromptStore(state => state.prompts)
   const categories = usePromptStore(state => state.categories)
   const initializePrompts = usePromptStore(state => state.initializePrompts)
+  const [showAbout, setShowAbout] = useState(false)
 
   // 在组件挂载时初始化提示词
   useEffect(() => {
@@ -53,13 +55,40 @@ export default function App() {
     initializePrompts()
   }, [initializePrompts])
 
+  // 监听 show-about-dialog 事件
+  useEffect(() => {
+    const electron = window.electron
+    console.log(
+      'App: Setting up show-about-dialog listener, electron available:',
+      !!electron
+    )
+
+    if (!electron) {
+      console.log('App: Electron API not available')
+      return
+    }
+
+    try {
+      const unsubscribe = electron.app.onShowAboutDialog(() => {
+        console.log('App: Received show-about-dialog event, showing dialog')
+        setShowAbout(true)
+      })
+
+      return () => {
+        console.log('App: Cleaning up show-about-dialog listener')
+        unsubscribe?.()
+      }
+    } catch (error) {
+      console.error('App: Error setting up show-about-dialog listener:', error)
+    }
+  }, [])
+
   // IPC 监听
   useEffect(() => {
     const electron = window.electron
     if (!electron) return
 
     const handleGetPrompts = () => {
-      console.log('App: Received get-prompts request')
       const data = {
         prompts: prompts,
         categories: categories.map(cat => ({
@@ -68,21 +97,19 @@ export default function App() {
           isSystem: cat.isSystem,
         })),
       }
-      console.log('App: Sending prompts data:', data)
-      // 使用 invoke 代替 send
-      electron.ipcRenderer.invoke('prompts-data', data)
+      electron.ipcRenderer.send('prompts-data', data)
     }
 
-    const removeListener = electron.ipcRenderer.on(
-      'get-prompts',
-      handleGetPrompts
-    )
+    // 初始化时发送一次数据
+    handleGetPrompts()
+
+    // 设置监听器
+    const cleanup = electron.ipcRenderer.on('get-prompts', handleGetPrompts)
 
     return () => {
-      console.log('App: Cleaning up get-prompts listener')
-      removeListener
+      cleanup?.()
     }
-  }, [prompts, categories])
+  }, [prompts, categories]) // 依赖项中包含 prompts 和 categories，这样它们更新时会自动发送新数据
 
   // 添加日志以跟踪渲染
   console.log('App: Rendering with prompts:', prompts.length)
@@ -112,6 +139,7 @@ export default function App() {
         </div>
       </div>
       <Toaster />
+      <AboutDialog open={showAbout} onOpenChange={setShowAbout} />
     </Layout>
   )
 }

@@ -40,6 +40,18 @@ export type IpcCallback<T = unknown> = (event: IpcEvent, ...args: T[]) => void
 export type IpcSubscription = () => void
 export type IpcHandler<T = unknown> = (...args: T[]) => void
 
+export interface VersionInfo {
+  version: string
+  commit: string
+  date: string
+  electron: string
+  electronBuildId: string
+  chromium: string
+  nodeVersion: string
+  v8: string
+  os: string
+}
+
 // Electron API 类型定义
 export interface ElectronAPI {
   window: {
@@ -75,5 +87,9 @@ export interface ElectronAPI {
     addDirectory: (
       directoryData: Omit<DirectoryData, 'id' | 'createdAt'>
     ) => Promise<ApiResponse<DirectoryData>>
+  }
+  app: {
+    onShowAboutDialog: (callback: () => void) => IpcSubscription
+    getVersionInfo: () => Promise<VersionInfo>
   }
 }

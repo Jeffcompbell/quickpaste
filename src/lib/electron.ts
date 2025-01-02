@@ -1,8 +1,9 @@
-/// <reference types="../../electron/electron-env" />
+import type { ElectronAPI } from '../../electron/electron-env'
 
-export function getElectronAPI(): Window['electron'] | undefined {
-  if (typeof window !== 'undefined' && window.electron) {
-    return window.electron
+export function getElectronAPI(): ElectronAPI {
+  if (!window.electron) {
+    throw new Error('Electron API not available')
   }
-  return undefined
+
+  return window.electron
 }

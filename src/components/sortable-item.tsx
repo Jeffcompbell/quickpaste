@@ -1,5 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { cn } from '@/lib/utils'
+import type { CSSProperties } from 'react'
 
 interface Props {
   id: string
@@ -16,14 +18,22 @@ export function SortableItem({ id, children }: Props) {
     isDragging,
   } = useSortable({ id })
 
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 40 : 'auto',
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn('touch-none', isDragging && 'pointer-events-none')}
+      {...attributes}
+      {...listeners}
+    >
       {children}
     </div>
   )

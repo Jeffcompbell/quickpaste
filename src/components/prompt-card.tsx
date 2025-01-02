@@ -77,10 +77,19 @@ const ActionButtons = memo(function ActionButtons({
         !isSystem && 'opacity-0 group-hover:opacity-100',
         'transition-opacity duration-200'
       )}
+      onClick={e => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      onMouseDown={e => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
     >
       {onShare && (
         <button
           onClick={e => {
+            e.preventDefault()
             e.stopPropagation()
             onShare()
           }}
@@ -92,6 +101,7 @@ const ActionButtons = memo(function ActionButtons({
       )}
       <button
         onClick={e => {
+          e.preventDefault()
           e.stopPropagation()
           onCopy()
         }}
@@ -103,11 +113,16 @@ const ActionButtons = memo(function ActionButtons({
       {!isSystem && (onEdit || onDelete || onMove) && (
         <DropdownMenu.Root
           open={isDropdownOpen}
-          onOpenChange={setIsDropdownOpen}
+          onOpenChange={open => {
+            setIsDropdownOpen(open)
+          }}
         >
           <DropdownMenu.Trigger asChild>
             <button
-              onClick={e => e.stopPropagation()}
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
               className="p-2 rounded-xl hover:bg-black/[0.03] transition-colors"
             >
               <MoreHorizontalIcon className="w-4 h-4 text-gray-600" />
@@ -116,12 +131,17 @@ const ActionButtons = memo(function ActionButtons({
 
           <DropdownMenu.Portal>
             <DropdownMenu.Content
-              className="min-w-[180px] bg-white rounded-lg shadow-lg border border-gray-100 py-1"
+              className="min-w-[180px] bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50"
               sideOffset={5}
+              onClick={e => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
             >
               {onEdit && (
                 <DropdownMenu.Item
                   onClick={e => {
+                    e.preventDefault()
                     e.stopPropagation()
                     onEdit()
                   }}
@@ -139,7 +159,7 @@ const ActionButtons = memo(function ActionButtons({
                   </DropdownMenu.SubTrigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.SubContent
-                      className="min-w-[180px] bg-white rounded-lg shadow-lg border border-gray-100 py-1"
+                      className="min-w-[180px] bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50"
                       sideOffset={2}
                       alignOffset={-5}
                     >
@@ -147,6 +167,7 @@ const ActionButtons = memo(function ActionButtons({
                         <DropdownMenu.Item
                           key={category.id}
                           onClick={e => {
+                            e.preventDefault()
                             e.stopPropagation()
                             onMove(category.id)
                           }}
@@ -162,6 +183,7 @@ const ActionButtons = memo(function ActionButtons({
               {onDelete && (
                 <DropdownMenu.Item
                   onClick={e => {
+                    e.preventDefault()
                     e.stopPropagation()
                     onDelete()
                   }}
@@ -201,25 +223,36 @@ const DetailDialog = memo(function DetailDialog({
           <div className="space-y-4">
             {/* 标题和分类 */}
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <Dialog.Title className="text-xl font-semibold text-gray-900">
                 {prompt.title}
-              </h2>
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-gray-500 mt-2">
+                查看提示词的详细内容。
+              </Dialog.Description>
+
+              {/* 分类和时间信息 */}
+              <div className="flex items-center text-sm text-gray-500 mt-4">
                 <span>{categoryName}</span>
-                <span>·</span>
+                <span className="mx-2">·</span>
                 <span>{formatDate(prompt.createTime)}</span>
                 {prompt.author && (
                   <>
-                    <span>·</span>
+                    <span className="mx-2">·</span>
                     <span>{prompt.author}</span>
                   </>
                 )}
               </div>
-            </div>
 
-            {/* 内容 */}
-            <div className="text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
-              {prompt.content}
+              {/* 内容 */}
+              <div
+                className="text-gray-700 whitespace-pre-wrap break-words leading-relaxed mt-4"
+                aria-describedby="prompt-content-description"
+              >
+                <div id="prompt-content-description" className="sr-only">
+                  提示词的详细内容如下：
+                </div>
+                {prompt.content}
+              </div>
             </div>
 
             {/* 底部操作栏 */}
@@ -263,11 +296,16 @@ export const PromptCard = memo(function PromptCard({
   }, [onCopy, prompt.content])
 
   const handleSave = useCallback(
-    (editedPrompt: ProductPrompt) => {
+    async (editedPrompt: ProductPrompt) => {
       if (onEdit) {
-        onEdit(editedPrompt)
+        try {
+          await onEdit(editedPrompt)
+          setIsEditOpen(false)
+        } catch (error) {
+          console.error('Failed to save prompt:', error)
+          // 保存失败时不关闭对话框，让用户可以看到错误提示
+        }
       }
-      setIsEditOpen(false)
     },
     [onEdit]
   )

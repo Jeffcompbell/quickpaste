@@ -10,6 +10,8 @@ import {
 } from 'electron'
 import { join, resolve } from 'path'
 import Store from 'electron-store'
+import { execSync } from 'child_process'
+import { readFileSync } from 'fs'
 
 // 声明全局变量
 let mainWindow: BrowserWindow | null = null
@@ -62,6 +64,16 @@ interface SystemPrompts {
   summary?: SystemPrompt[]
 }
 
+// 定义 package.json 的类型
+interface PackageJson {
+  version: string
+  name?: string
+  description?: string
+  author?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+}
+
 // 获取正确的 preload 脚本路径
 function getPreloadPath() {
   // 在开发和生产环境下都使用编译后的 js 文件
@@ -77,9 +89,10 @@ function initializeDefaultData() {
       : join(__dirname, '../dist/config/system-prompts.json')
 
     console.log('Loading system prompts from:', systemPromptsPath)
-    let systemPrompts
+    let systemPrompts: SystemPrompts
     try {
-      systemPrompts = require(systemPromptsPath)
+      const fileContent = readFileSync(systemPromptsPath, 'utf-8')
+      systemPrompts = JSON.parse(fileContent)
       console.log('System prompts loaded successfully:', {
         requirement: systemPrompts.requirement?.length || 0,
         debug: systemPrompts.debug?.length || 0,
@@ -186,7 +199,8 @@ ipcMain.on('panel:ready', () => {
     }
 
     try {
-      systemPrompts = require(systemPromptsPath)
+      const fileContent = readFileSync(systemPromptsPath, 'utf-8')
+      systemPrompts = JSON.parse(fileContent)
       console.log('System prompts loaded successfully:', {
         requirement: systemPrompts.requirement?.length || 0,
         debug: systemPrompts.debug?.length || 0,
@@ -462,6 +476,93 @@ function createTray() {
   })
 }
 
+// 获取 Git 信息
+function getGitInfo() {
+  try {
+    const commit = execSync('git rev-parse --short HEAD').toString().trim()
+    const date = execSync(
+      'git log -1 --format=%cd --date=format:"%Y-%m-%d %H:%M:%S"'
+    )
+      .toString()
+      .trim()
+    return { commit, date }
+  } catch (error) {
+    console.error('Failed to get git info:', error)
+    return { commit: 'unknown', date: new Date().toLocaleString() }
+  }
+}
+
+// 设置应用程序关于面板信息
+if (isMac) {
+  const gitInfo = getGitInfo()
+  const versions = process.versions
+  const pkgPath = join(__dirname, '../package.json')
+  const pkgContent = readFileSync(pkgPath, 'utf-8')
+  const pkg = JSON.parse(pkgContent)
+
+  app.setAboutPanelOptions({
+    applicationName: 'ProPaste',
+    applicationVersion: pkg.version,
+    version: `Electron ${versions.electron} (Chromium ${versions.chrome})`,
+    copyright: '© 2024 ProPaste',
+    credits: `Git commit: ${gitInfo.commit}\nBuild date: ${gitInfo.date}`,
+  })
+}
+
+// 创建应用菜单
+function createApplicationMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: 'ProPaste',
+      submenu: [
+        {
+          label: '关于 ProPaste',
+          role: 'about',
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: '编辑',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { role: 'front' },
+      ],
+    },
+  ]
+
+  console.log('Menu: Creating application menu')
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+  console.log('Menu: Application menu created')
+}
+
+// 在应用启动时就创建菜单
+if (isMac) {
+  createApplicationMenu()
+}
+
 // 应用程序准备就绪时的处理
 app.whenReady().then(() => {
   console.log('App is ready')
@@ -481,6 +582,32 @@ app.whenReady().then(() => {
 
   ipcMain.handle('window:get-pin-state', () => {
     return mainWindow?.isAlwaysOnTop() || false
+  })
+
+  // 注册获取版本信息的处理程序
+  ipcMain.handle('app:get-version-info', () => {
+    const gitInfo = getGitInfo()
+    const versions = process.versions
+    const pkg = loadPackageJson()
+
+    console.log('Version info:', {
+      version: pkg.version,
+      commit: gitInfo.commit,
+      date: gitInfo.date,
+      electron: versions.electron,
+    })
+
+    return {
+      version: pkg.version,
+      commit: gitInfo.commit,
+      date: gitInfo.date,
+      electron: versions.electron || 'unknown',
+      electronBuildId: versions.electron_build_id || 'unknown',
+      chromium: versions.chrome || 'unknown',
+      nodeVersion: versions.node || 'unknown',
+      v8: versions.v8 || 'unknown',
+      os: `${process.platform} ${process.getSystemVersion()}`,
+    }
   })
 
   // 注册窗口控制相关的 IPC 处理程序
@@ -628,3 +755,38 @@ ipcMain.handle('clipboard:read-text', async () => {
     throw error
   }
 })
+
+// 修改加载 system-prompts.json 的部分
+function loadSystemPrompts(systemPromptsPath: string): SystemPrompts {
+  try {
+    const fileContent = readFileSync(systemPromptsPath, 'utf-8')
+    const systemPrompts = JSON.parse(fileContent)
+    console.log('System prompts loaded successfully:', {
+      requirement: systemPrompts.requirement?.length || 0,
+      debug: systemPrompts.debug?.length || 0,
+      deployment: systemPrompts.deployment?.length || 0,
+      summary: systemPrompts.summary?.length || 0,
+    })
+    return systemPrompts
+  } catch (error) {
+    console.error('Failed to load system prompts:', error)
+    return {
+      requirement: [],
+      debug: [],
+      deployment: [],
+      summary: [],
+    }
+  }
+}
+
+// 修改加载 package.json 的部分
+function loadPackageJson(): PackageJson {
+  try {
+    const pkgPath = join(__dirname, '../package.json')
+    const fileContent = readFileSync(pkgPath, 'utf-8')
+    return JSON.parse(fileContent) as PackageJson
+  } catch (error) {
+    console.error('Failed to load package.json:', error)
+    return { version: '0.0.0' }
+  }
+}

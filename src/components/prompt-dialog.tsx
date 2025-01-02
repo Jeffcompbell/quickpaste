@@ -43,9 +43,20 @@ export function PromptDialog() {
             <Dialog.Title className="text-lg font-semibold text-gray-900">
               新建提示词
             </Dialog.Title>
+            <Dialog.Description className="text-sm text-gray-500 mt-2">
+              创建一个新的提示词，填写标题、内容和选择分类。
+            </Dialog.Description>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <form
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto"
+            aria-label="新建提示词表单"
+            aria-describedby="new-prompt-description"
+          >
+            <div id="new-prompt-description" className="sr-only">
+              新建提示词的表单，包含标题、内容和分类字段。
+            </div>
             <div className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">

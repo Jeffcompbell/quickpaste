@@ -7,6 +7,7 @@ import type {
   IpcSubscription,
   IpcHandler,
   ElectronAPI,
+  VersionInfo,
 } from './types'
 
 // 定义 API
@@ -82,6 +83,31 @@ const api: ElectronAPI = {
       ipcRenderer.invoke('add-prompt', promptData),
     addDirectory: (directoryData: Omit<DirectoryData, 'id' | 'createdAt'>) =>
       ipcRenderer.invoke('add-directory', directoryData),
+  },
+  app: {
+    onShowAboutDialog: (callback: () => void): IpcSubscription => {
+      console.log('Preload: Setting up show-about-dialog listener')
+      const subscription: IpcCallback = event => {
+        console.log('Preload: Received show-about-dialog event')
+        callback()
+      }
+      ipcRenderer.on('show-about-dialog', subscription)
+      return () => {
+        console.log('Preload: Removing show-about-dialog listener')
+        ipcRenderer.removeListener('show-about-dialog', subscription)
+      }
+    },
+    getVersionInfo: async () => {
+      console.log('Preload: Getting version info...')
+      try {
+        const info = await ipcRenderer.invoke('app:get-version-info')
+        console.log('Preload: Received version info:', info)
+        return info
+      } catch (error) {
+        console.error('Preload: Failed to get version info:', error)
+        throw error
+      }
+    },
   },
 }
 
