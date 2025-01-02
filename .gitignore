@@ -31,3 +31,9 @@ yarn-error.log*
 
 # electron
 /out
+
+# release
+/release/
+
+# docs
+/docs/
