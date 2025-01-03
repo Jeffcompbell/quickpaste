@@ -73,7 +73,7 @@ const ActionButtons = memo(function ActionButtons({
   return (
     <div
       className={cn(
-        'flex items-center space-x-1 relative z-10',
+        'flex items-center space-x-1 absolute top-3 right-3',
         !isSystem && 'opacity-0 group-hover:opacity-100',
         'transition-opacity duration-200'
       )}

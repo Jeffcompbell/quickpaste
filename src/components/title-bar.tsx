@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { getElectronAPI } from '../lib/electron'
+import { Header } from './header'
 
 export function TitleBar() {
   const electron = getElectronAPI()
@@ -11,13 +12,13 @@ export function TitleBar() {
         await electron.window.getMaximizedState()
       }
     }
+
     initWindowState()
   }, [electron])
 
   return (
-    <div className="h-8 flex items-center justify-start webkit-app-region-drag bg-transparent">
-      {/* macOS 红绿灯占位，不需要实际按钮，系统会自动显示 */}
-      <div className="w-20 h-full" />
+    <div className="flex items-center">
+      <Header />
     </div>
   )
 }

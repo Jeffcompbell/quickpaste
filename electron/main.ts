@@ -452,19 +452,21 @@ function createWindow() {
     },
   })
 
-  // 获取正确的主窗口 HTML 路径
-  if (isDevelopment && VITE_DEV_SERVER_URL) {
-    console.log('Loading from dev server:', VITE_DEV_SERVER_URL)
-    mainWindow.loadURL(VITE_DEV_SERVER_URL)
+  // 只在开发环境下打开开发者工具
+  if (isDevelopment) {
+    mainWindow.webContents.openDevTools()
   } else {
-    const mainPath = join(__dirname, '../dist/index.html')
-    console.log('Loading from file:', mainPath)
-    mainWindow.loadFile(mainPath)
+    // 生产环境禁用开发者工具
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools()
+    })
   }
 
-  // 在开发模式下打开开发者工具
+  // 加载应用
   if (isDevelopment) {
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
+    mainWindow.loadURL('http://localhost:5173')
+  } else {
+    mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
 
   mainWindow.once('ready-to-show', () => {

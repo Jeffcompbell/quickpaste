@@ -95,14 +95,12 @@ export function PromptPanel() {
   return (
     <div className="w-full h-full bg-[#fafafa] flex flex-col">
       {/* 标题栏 */}
-      <div className="h-10 shrink-0 flex items-center bg-white px-3 window-drag relative border-b border-gray-200 select-none">
+      <div className="h-10 shrink-0 flex items-center bg-white px-3 relative border-b border-gray-200">
         <div className="absolute left-3 window-no-drag">
           <TitleBar />
         </div>
-        <div className="flex-1 text-center">
-          <span className="text-sm font-medium text-gray-600 window-no-drag">
-            ProPaste
-          </span>
+        <div className="flex-1 text-center window-drag">
+          <span className="text-sm font-medium text-gray-600">ProPaste</span>
         </div>
       </div>
 

@@ -41,3 +41,4 @@ release/
 *.dmg
 *.exe
 *.app
+**/Electron Framework.framework/**
