@@ -95,29 +95,46 @@ export function PromptPanel() {
   return (
     <div className="w-full h-full bg-[#fafafa] flex flex-col">
       {/* 标题栏 */}
-      <div className="h-8 flex items-center bg-white px-3 window-drag relative border-b border-gray-200">
-        <div className="absolute left-3">
+      <div className="h-10 shrink-0 flex items-center bg-white px-3 window-drag relative border-b border-gray-200 select-none">
+        <div className="absolute left-3 window-no-drag">
           <TitleBar />
         </div>
         <div className="flex-1 text-center">
-          <span className="text-sm font-medium text-gray-600">ProPaste</span>
+          <span className="text-sm font-medium text-gray-600 window-no-drag">
+            ProPaste
+          </span>
         </div>
       </div>
 
       {/* 搜索栏 */}
-      <div className="px-4 py-2 bg-white border-b border-gray-200">
-        <div className="relative max-w-[720px] mx-auto">
+      <div className="p-3 shrink-0 bg-white border-b border-gray-200">
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2">
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+              />
+            </svg>
+          </div>
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="搜索提示词..."
-            className="w-full px-3 py-1.5 pr-8 text-sm bg-[#fafafa] rounded-md focus:outline-none focus:ring-1 focus:ring-gray-200 transition-colors"
+            className="w-full pl-9 pr-8 py-2 text-sm bg-gray-50/80 rounded-lg border border-gray-200/80 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all placeholder:text-gray-400"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             >
               <svg
                 className="w-4 h-4"

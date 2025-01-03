@@ -4,10 +4,12 @@ import { CategorySidebar } from './components/category-sidebar'
 import { PromptList } from './components/prompt-list'
 import { Toaster } from 'react-hot-toast'
 import { usePromptStore } from './store/prompt'
+import { useSearchStore } from './store/search'
 import { Header } from './components/header'
 import { PromptDialog } from './components/prompt-dialog'
 import { AboutDialog } from './components/about-dialog'
 import { ActivationDialog } from './components/activation-dialog'
+import { SearchIcon } from './components/icons'
 
 // 分离标题组件
 const CategoryTitle = memo(function CategoryTitle() {
@@ -35,11 +37,28 @@ const CategoryTitle = memo(function CategoryTitle() {
 const PromptListContainer = memo(function PromptListContainer() {
   const activeCategory = usePromptStore(state => state.activeCategory)
   const prompts = usePromptStore(state => state.prompts)
+  const searchQuery = useSearchStore(state => state.searchQuery)
 
   const filteredPrompts = useMemo(() => {
-    if (!activeCategory) return prompts
-    return prompts.filter(prompt => prompt.category === activeCategory)
-  }, [prompts, activeCategory])
+    let filtered = prompts
+
+    // 按分类过滤
+    if (activeCategory) {
+      filtered = filtered.filter(prompt => prompt.category === activeCategory)
+    }
+
+    // 按搜索词过滤
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        prompt =>
+          prompt.title.toLowerCase().includes(query) ||
+          prompt.content.toLowerCase().includes(query)
+      )
+    }
+
+    return filtered
+  }, [prompts, activeCategory, searchQuery])
 
   return <PromptList prompts={filteredPrompts} />
 })
@@ -50,6 +69,9 @@ export function App() {
   const categories = usePromptStore(state => state.categories)
   const initializePrompts = usePromptStore(state => state.initializePrompts)
   const [showAbout, setShowAbout] = useState(false)
+
+  const searchQuery = useSearchStore(state => state.searchQuery)
+  const setSearchQuery = useSearchStore(state => state.setSearchQuery)
 
   // 检查激活状态
   useEffect(() => {
@@ -151,11 +173,16 @@ export function App() {
             <div className="flex items-center justify-between p-6 pb-4">
               <CategoryTitle />
               <div className="flex items-center space-x-4">
-                <input
-                  type="search"
-                  placeholder="搜索提示词..."
-                  className="px-3 py-1.5 text-sm border rounded-md w-64"
-                />
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="search"
+                    placeholder="搜索提示词..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-3 py-1.5 text-sm border rounded-md w-64 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                  />
+                </div>
                 <PromptDialog />
               </div>
             </div>

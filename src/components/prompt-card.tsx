@@ -314,10 +314,10 @@ export const PromptCard = memo(function PromptCard({
     <>
       <div
         className={cn(
-          'group w-full bg-white/80 hover:bg-white rounded-lg p-3',
+          'group relative bg-white/80 hover:bg-white rounded-lg p-4',
           'border border-gray-100/80 hover:border-gray-200/80',
           'shadow-sm hover:shadow transition-all duration-200',
-          'cursor-pointer select-none',
+          'cursor-pointer select-none h-32',
           isSystem && 'bg-gray-50/80 hover:bg-gray-50',
           className
         )}
@@ -336,17 +336,6 @@ export const PromptCard = memo(function PromptCard({
                 : undefined
             }
           />
-        </div>
-        <div className="mt-2 flex items-center text-xs text-gray-400 border-t border-gray-100/80 pt-2">
-          <span>{categoryName}</span>
-          <span className="mx-1">·</span>
-          <span>{formatDate(prompt.createTime)}</span>
-          {prompt.author && (
-            <>
-              <span className="mx-1">·</span>
-              <span>{prompt.author}</span>
-            </>
-          )}
         </div>
       </div>
 
