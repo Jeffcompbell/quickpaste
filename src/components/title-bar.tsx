@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { getElectronAPI } from '../lib/electron'
-import { Header } from './header'
 
 export function TitleBar() {
   const electron = getElectronAPI()
@@ -18,7 +17,24 @@ export function TitleBar() {
 
   return (
     <div className="flex items-center">
-      <Header />
+      <button
+        className="p-2 hover:bg-accent rounded-md"
+        onClick={() => electron?.window.togglePanel()}
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </button>
     </div>
   )
 }

@@ -4,7 +4,6 @@ import { cn } from '../../lib/utils'
 import { toast } from 'react-hot-toast'
 import { PromptCard } from '../../components/prompt-card'
 import { getElectronAPI } from '../../lib/electron'
-import { TitleBar } from '../../components/title-bar'
 
 export function PromptPanel() {
   const [isLoading, setIsLoading] = useState(true)
@@ -95,12 +94,14 @@ export function PromptPanel() {
   return (
     <div className="w-full h-full bg-[#fafafa] flex flex-col">
       {/* 标题栏 */}
-      <div className="h-10 shrink-0 flex items-center bg-white px-3 relative border-b border-gray-200">
-        <div className="absolute left-3 window-no-drag">
-          <TitleBar />
-        </div>
-        <div className="flex-1 text-center window-drag">
-          <span className="text-sm font-medium text-gray-600">ProPaste</span>
+      <div
+        className="h-10 shrink-0 flex items-center bg-white px-3 relative border-b border-gray-200"
+        style={{ WebkitAppRegion: 'drag' }}
+      >
+        <div className="flex-1 text-center">
+          <span className="text-sm font-medium text-gray-600 select-none">
+            ProPaste
+          </span>
         </div>
       </div>
 
